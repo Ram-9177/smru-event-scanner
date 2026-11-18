@@ -102,45 +102,27 @@ Close the Terminal window to stop. Double-click again to start; that takes a few
   in 10 minutes something is wrong that a restart does not fix: the script stops and says so.
 - What it printed is in `logs/start.log` (kept under 5 MB; the one before is `logs/start.log.old`).
 
-## The permanent public link (ngrok)
+## The public link
 
-Students use one link that never changes: your fixed ngrok domain (free plan: one domain, shown in the ngrok
-dashboard under Domains). Set it once in `server/.env`, without `https://`:
-
-```
-NGROK_DOMAIN=galleried-warless-petronila.ngrok-free.dev
-```
-
-- The QR code, the share kit, the links in emails and the Microsoft redirect are then `https://NGROK_DOMAIN`,
-  whatever `PUBLIC_URL` says. (If `PUBLIC_URL` is already an ngrok address and `NGROK_DOMAIN` is not set, the start
-  script writes it in for you.)
-- The start script keeps the tunnel up. It first looks for an ngrok that already runs for this domain (ngrok's own
-  page at http://127.0.0.1:4040, then the link itself) and uses that one: it never starts a second. Otherwise it runs
-  `ngrok http --url=https://NGROK_DOMAIN <PORT>`, and starts it again if it stops (after 5, 10, 30, 60, 120 seconds,
-  then every 2 minutes). An ngrok you started yourself is never stopped by it.
-- Every 5 minutes it opens the link the way a phone would. When that fails the log says
-  `Public link is DOWN ... Students cannot open it.` (again every hour while it stays down), and
-  `Public link works again` when it is back.
-- It needs ngrok installed (`brew install ngrok`) and signed in once: `ngrok config add-authtoken <your token>`.
-  Without ngrok the app still runs on this Mac and the start script says there is no public link.
-- `PUBLIC_TUNNEL=off` in `server/.env` leaves ngrok to you. `NGROK_PATH` points at ngrok if it is somewhere unusual.
-- If the start script says the running tunnel "points at" another port, an ngrok is running for an old port:
-  stop that ngrok (or quit it in Activity Monitor) and start again.
+Students and organisers use one link: the live server, **https://stmarys-event-scanner.supercxo.ai**
+(organisers: https://stmarys-event-scanner.supercxo.ai/admin). It is `PUBLIC_URL` in the server's settings, and the
+QR codes, the share kit, the links in emails and the Microsoft redirect are all made from it. A copy started on a
+Mac with the start script is only for trying things out: it opens at http://localhost:3000 and has no public link.
 
 ## Run it all the time
 
-On the Mac that serves the photos, make Event Photos a login service once:
+To keep a copy running on a Mac (for trying things out; students use the live server), make it a login service once:
 
 ```bash
 npm run service install      # starts it now, at every login, and again whenever it stops
-npm run service status       # running or not, does the app answer, does the public link answer, last log lines
+npm run service status       # running or not, does the app answer, does PUBLIC_URL answer, last log lines
 npm run service stop         # stop it for a while (it starts again at the next login, or with: npm run service start)
 npm run service uninstall    # stop it and do not start it at login any more
 ```
 
-- It runs the same start script as the double-click (`scripts/start.ts --service`), so the app, PostgreSQL, Redis
-  and the public link (above) come up together, and the app is started again if it crashes.
-- The Mac is kept awake while it runs (`caffeinate`), so the link keeps working with the lid open and nobody at
+- It runs the same start script as the double-click (`scripts/start.ts --service`), so the app, PostgreSQL and
+  Redis come up together, and the app is started again if it crashes.
+- The Mac is kept awake while it runs (`caffeinate`), so the app keeps working with the lid open and nobody at
   it. The screen can still turn off. With the lid closed a MacBook sleeps unless it is on power with a display
   attached. Keep it on power.
 - It starts when you log in, so set the Mac to log in to your account by itself after a power cut (System
@@ -244,10 +226,7 @@ On a phone the camera
 needs HTTPS, so try the selfie on the computer first (a laptop camera works on localhost).
 While changing code use `npm run dev` instead and open http://localhost:5173.
 
-**To try it on a real phone before you have a server:** a tunnel gives your computer a temporary HTTPS address.
-With [cloudflared](https://developers.cloudflare.com/tunnel/get-started/quick-tunnels/) installed, run
-`cloudflared tunnel --url http://localhost:3000` in a second terminal and open the `trycloudflare.com` address it
-prints on the phone. Anyone who has that address can open the app while the tunnel runs, so stop it after the test.
+**To try it on a real phone:** use the live server, https://stmarys-event-scanner.supercxo.ai.
 
 ## Connect your college OneDrive (the real test)
 
@@ -309,13 +288,13 @@ NODE_ENV=production npm start      # serves the web app and the API on PORT; the
 - With Caddy or nginx on the same server, set `HOST=127.0.0.1` so the app's port can only be reached through it.
   The app believes `X-Forwarded-For`/`-Proto` only from a proxy on this computer; for a proxy on another machine set
   `TRUST_PROXY` to its address (for example `TRUST_PROXY=10.0.0.5`).
-  Through ngrok or another tunnel on the same computer, keep `TRUST_PROXY=loopback` (the default; never `false`), so
-  the app sees each visitor's address and not one 127.0.0.1 for everyone.
+  Behind a proxy on the same computer, keep `TRUST_PROXY=loopback` (the default; never `false`), so the app sees
+  each visitor's address and not one 127.0.0.1 for everyone.
 - Find my photos is limited per phone (`SEARCHES_PER_10_MIN` 5, `SEARCHES_PER_DAY` 20) and, as a phone's token costs
   nothing to change, per network address too: `SEARCHES_PER_IP_10_MIN` (60, room for a class on one Wi-Fi; 0 = off).
   Requests that reach the app from this computer without a visitor's address are not counted.
-- Set `PUBLIC_URL` to the HTTPS address. The QR code, the one link and the Microsoft redirect URI are made from it.
-  With a fixed ngrok domain set `NGROK_DOMAIN` instead (see "The permanent public link").
+- Set `PUBLIC_URL` to the HTTPS address (`https://stmarys-event-scanner.supercxo.ai`). The QR code, the one link and
+  the Microsoft redirect URI are made from it.
 - Keep the server running, and PostgreSQL and Redis with it: on a Mac `npm run service install` (see "Run it all the
   time"); on Linux a service manager such as systemd or pm2.
 - The database is backed up by the server itself: `pg_dump` two minutes after start and then every
@@ -336,7 +315,7 @@ NODE_ENV=production npm start      # serves the web app and the API on PORT; the
 
 ```bash
 npm test                 # server (Vitest + Supertest) and web (Vitest + Testing Library). Needs PostgreSQL 16 and Redis.
-npm run test:scripts     # the start script's tunnel, restart and login-service logic (a fake ngrok; never the real one)
+npm run test:scripts     # the start script's restart and login-service logic
 npm run typecheck        # server, web and scripts
 ```
 
@@ -402,7 +381,7 @@ server/src/face/       local.ts + face-worker.ts: the face engine (YuNet, SFace,
 server/src/db/         index.ts (Knex), migrations.ts, schema.ts (the tables, and VISIBLE: what students see)
 server/src/lib/        jwt.ts (RS256), redis.ts (limits), mail.ts (Nodemailer), router.ts (async handlers on Express 4)
 web/src/               student.tsx (the student app), admin.tsx (the console), ui.tsx, lib/query.ts (TanStack Query)
-scripts/               start.ts (one-step start), tunnel.ts (ngrok link), supervisor.ts (restarts), service.ts (login service),
+scripts/               start.ts (one-step start), supervisor.ts (restarts), service.ts (login service),
                        dev.ts, e2e-real.ts (end-to-end run with real photos)
 NOTES.md               decisions made while building; paste it to your AI assistant with the plan
 ```
@@ -418,8 +397,8 @@ Everything for the server is in `deploy/` (Docker Compose: the app, PostgreSQL 1
 2. Microsoft Entra: add this redirect URI to the app registration (OneDrive and Microsoft sign-in both come back
    to it): `https://stmarys-event-scanner.supercxo.ai/admin/onedrive/callback`.
 3. Settings: one private file, `deploy/.env` (never committed, never put in the image). Start from
-   `deploy/.env.example`. `PUBLIC_URL` is the domain; leave out `NGROK_DOMAIN` (it would replace `PUBLIC_URL`) and
-   `HOST` (Compose sets it). `POSTGRES_PASSWORD` is required: the server does not start without it.
+   `deploy/.env.example`. `PUBLIC_URL` is the domain; leave out `HOST` (Compose sets
+   it). `POSTGRES_PASSWORD` is required: the server does not start without it.
 
    `SESSION_SECRET` must be the one the old copy used when you bring its database over (on a Mac started without
    one, it is in `server/data/dev-secret`): it unlocks the OneDrive sign-in kept in the database. With a new

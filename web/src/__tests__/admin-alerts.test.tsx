@@ -80,7 +80,7 @@ const MB = 1024 ** 2;
 const storage = (over: { machine?: string; host?: string; database?: object; server?: object; onedrive?: object; copies?: object } = {}) => {
   const base = {
     machine: 'Mac',
-    host: 'galleried-warless-petronila.ngrok-free.dev',
+    host: 'localhost:3000',
     database: { size: 80 * MB, backups: 300 * MB, backups_on: true },
     server: { temp: 0, cache: 120 * MB, cache_max: 300 * MB, legacy_copies: 0, uploads_paused: false, min_free_upload: 1 * GB },
     onedrive: { connected: true, quota: { total: 1024 * GB, used: 256 * GB, remaining: 768 * GB }, copies: 14.5 * GB },

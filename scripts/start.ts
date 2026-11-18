@@ -14,8 +14,8 @@
  *          started another way, it only watches it until it stops)
  * Everything it prints also goes to logs/start.log.
  *
- * While it runs it keeps things up: the app is started again when it stops (scripts/supervisor.ts), and with
- * NGROK_DOMAIN in server/.env the public link is kept up with ngrok (scripts/tunnel.ts; PUBLIC_TUNNEL=off: not).
+ * While it runs it keeps the app up: it is started again when it stops (scripts/supervisor.ts). The public link is
+ * the live server's (PUBLIC_URL in server/.env, https://stmarys-event-scanner.supercxo.ai); this Mac opens at localhost.
  */
 import { spawn, spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -25,7 +25,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadSamples } from './samples.ts';
 import { superviseApp, type Supervisor } from './supervisor.ts';
-import { findNgrok, ngrokDomainFrom, ngrokHostOf, startTunnel, type Tunnel } from './tunnel.ts';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 process.chdir(ROOT);
@@ -293,11 +292,9 @@ async function setUpModels(): Promise<void> {
 const children = new Set<import('node:child_process').ChildProcess>();
 let stopping = false;
 let app: Supervisor | null = null;
-let tunnel: Tunnel | null = null;
 function stopAll(code = 0) {
   if (stopping) return;
   stopping = true;
-  tunnel?.stop();
   app?.stop();
   const running = [...children].filter((c) => c.exitCode === null && c.signalCode === null);
   for (const c of running) c.kill('SIGTERM');
@@ -376,8 +373,7 @@ async function main() {
     if (SERVICE) {
       await watchOther(saved.PORT);
     } else {
-      const dom = ngrokDomainFrom(process.env.NGROK_DOMAIN || saved.NGROK_DOMAIN);
-      const url = dom ? `https://${dom}` : saved.PUBLIC_URL || `http://localhost:${saved.PORT}`;
+      const url = `http://localhost:${saved.PORT}`;
       say(`Event Photos is already running: ${url}`);
       openBrowser(url);
       return stopAll(0);
@@ -430,23 +426,15 @@ async function main() {
     say('Made the settings file server/.env (it keeps the sign-in and the ports).');
   }
   let cfg = readEnv();
-  // The fixed ngrok domain. A PUBLIC_URL that is already an ngrok address counts as one (written down once).
-  if (!ngrokDomainFrom(process.env.NGROK_DOMAIN || cfg.NGROK_DOMAIN) && ngrokHostOf(cfg.PUBLIC_URL)) {
-    setEnv({ NGROK_DOMAIN: ngrokHostOf(cfg.PUBLIC_URL) });
-    say(`PUBLIC_URL is an ngrok address, so it is now NGROK_DOMAIN in server/.env and this start keeps that tunnel up.`);
-    say('(To run ngrok yourself instead, set PUBLIC_TUNNEL=off there.)');
-    cfg = readEnv();
-  }
-  const domain = ngrokDomainFrom(process.env.NGROK_DOMAIN || cfg.NGROK_DOMAIN);
-  const tunnelOff = /^(off|0|false|no)$/i.test((process.env.PUBLIC_TUNNEL || cfg.PUBLIC_TUNNEL || '').trim());
+  // A PUBLIC_URL that is a real address (the live server) stays as it is; one on this computer follows the port.
+  const onThisComputer = !cfg.PUBLIC_URL || /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/i.test(cfg.PUBLIC_URL);
   let port = Number(cfg.PORT || 3000);
   if (!(await portFree(port))) {
     const was = port;
     port = await freePort(port + 1);
-    // With a fixed domain the link stays the same; only the port on this Mac changes.
-    setEnv(domain ? { PORT: port } : { PORT: port, PUBLIC_URL: `http://localhost:${port}` });
+    setEnv(onThisComputer ? { PORT: port, PUBLIC_URL: `http://localhost:${port}` } : { PORT: port });
     say(`Port ${was} is taken by another program, so Event Photos now uses ${port}.`);
-    if (cfg.MS_CLIENT_ID && !domain) say(`OneDrive is set up: register http://localhost:${port}/admin/onedrive/callback in Microsoft Entra too, or free port ${was}.`);
+    if (cfg.MS_CLIENT_ID && onThisComputer) say(`OneDrive is set up: register http://localhost:${port}/admin/onedrive/callback in Microsoft Entra too, or free port ${was}.`);
     cfg = readEnv();
   }
   // PostgreSQL 16 and Redis: started if they are not running (Mac + Homebrew), and the database made.
@@ -458,7 +446,7 @@ async function main() {
   await setUpDatabase(cfg.DATABASE_URL);
   await setUpRedis(cfg.REDIS_URL);
   const here = `http://localhost:${port}`;
-  const url = domain ? `https://${domain}` : cfg.PUBLIC_URL || here;
+  const url = cfg.PUBLIC_URL || here;
   const driveDir = path.resolve(SERVER, cfg.LOCAL_DRIVE_DIR || './data/drive');
   const local = !(cfg.MS_TENANT_ID && cfg.MS_CLIENT_ID && cfg.MS_CLIENT_SECRET) || cfg.DRIVE === 'local';
   if (local) fs.mkdirSync(driveDir, { recursive: true });
@@ -466,7 +454,6 @@ async function main() {
   // 6. Start the app (the face engine runs inside it). When it stops on its own it is started again.
   say('Starting the app ...');
   const appEnv: NodeJS.ProcessEnv = { ...env, PORT: String(port), PUBLIC_URL: url, HOST: cfg.HOST || '127.0.0.1' };
-  if (domain) appEnv.NGROK_DOMAIN = domain;
   app = superviseApp({
     spawnApp: () => startChild('app', process.execPath, ['dist/index.js'], { cwd: SERVER, env: appEnv }),
     say,
@@ -481,16 +468,6 @@ async function main() {
     },
   });
   await waitFor(`http://127.0.0.1:${port}/api/events`, 90_000, 'The app');
-
-  // 6b. The public link (NGROK_DOMAIN): reuse a running tunnel, else start ngrok and keep it up.
-  if (domain && !tunnelOff) {
-    const ngrok = findNgrok(process.env.NGROK_PATH || cfg.NGROK_PATH);
-    if (!ngrok) say('ngrok is not installed, so there is no public link. Install it with:  brew install ngrok');
-    else {
-      tunnel = startTunnel({ domain, port, ngrok, say, api: process.env.NGROK_API || cfg.NGROK_API || undefined });
-      await tunnel.ready;
-    }
-  }
 
   // 7. Sample events, once.
   const marker = path.join(SERVER, 'data', '.samples-done');
@@ -511,9 +488,9 @@ async function main() {
   say('');
   say('==================================================================');
   say(' Event Photos is running');
-  say(`   Students:    ${url}`);
-  say(`   Organisers:  ${url}/admin`);
-  if (url !== here) say(`   On this Mac:  ${here}`);
+  say(`   On this Mac:  ${here}`);
+  say(`   Organisers:   ${here}/admin`);
+  if (url !== here) say(`   Its links, QR codes and emails use:  ${url}`);
   if (first) {
     say(`   Sign in:     ${cfg.ADMIN_EMAIL}  /  ${cfg.ADMIN_PASSWORD}`);
     say('                (also kept in server/.env; change it in Settings, My password)');
@@ -528,7 +505,7 @@ async function main() {
   if (SERVICE) say('   Runs by itself (login service). Check it: npm run service status. Stop it: npm run service stop');
   else say('   To stop: close this window, or press Ctrl+C.');
   say('==================================================================');
-  openBrowser(url);
+  openBrowser(here);
 }
 
 main().catch((e: unknown) => {

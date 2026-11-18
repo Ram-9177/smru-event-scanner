@@ -16,7 +16,7 @@ export interface Config {
    * of hops, or true/false.
    */
   trustProxy: boolean | number | string;
-  /** The one permanent address, for the QR and for links (https://NGROK_DOMAIN when that is set, else PUBLIC_URL). */
+  /** The one permanent address, for the QR and for links (PUBLIC_URL, e.g. https://stmarys-event-scanner.supercxo.ai). */
   publicUrl: string;
   /** Folder for temp files, keys and (in demo mode) the stand-in drive. No photo or video is kept here: they live in OneDrive. */
   dataDir: string;
@@ -138,12 +138,6 @@ export interface Config {
   /** pg_dump to use (PG_DUMP). Empty: looked for where PostgreSQL is usually installed. */
   pgDumpPath: string;
 
-  /**
-   * The fixed ngrok domain (NGROK_DOMAIN, e.g. galleried-warless-petronila.ngrok-free.dev, without https://). Empty =
-   * none. When set, the one link (publicUrl, the QR and the share kit) is https://NGROK_DOMAIN, whatever PUBLIC_URL says.
-   * scripts/start.ts runs the tunnel to it (PUBLIC_TUNNEL=off: it does not).
-   */
-  ngrokDomain: string;
 
   /** Keep me updated: Web Push keys (VAPID). Empty: a pair is made once and kept in DATA_DIR/vapid.json. */
   vapid: { publicKey: string; privateKey: string; subject: string };
@@ -191,15 +185,8 @@ export function trustProxyFrom(v: string | undefined): boolean | number | string
   return s;
 }
 
-/** NGROK_DOMAIN as a bare host name: "https://x.ngrok-free.dev/" -> "x.ngrok-free.dev". Empty when not set. */
-export function ngrokDomainFrom(v: string | undefined): string {
-  return (v ?? '').trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, '').toLowerCase();
-}
-
-/** The one link: https://NGROK_DOMAIN when that is set (the fixed tunnel); otherwise PUBLIC_URL, or http://localhost:<port>. */
+/** The one link: PUBLIC_URL (the live server, https://stmarys-event-scanner.supercxo.ai), or http://localhost:<port>. */
 export function publicUrlFrom(env: NodeJS.ProcessEnv, port: number): string {
-  const ngrok = ngrokDomainFrom(env.NGROK_DOMAIN);
-  if (ngrok) return `https://${ngrok}`;
   return (env.PUBLIC_URL || '').trim().replace(/\/+$/, '') || `http://localhost:${port}`;
 }
 
@@ -293,7 +280,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, overrides: Part
     backupKeep: Math.max(1, num(env.BACKUP_KEEP, 14)),
     backupEveryHours: num(env.BACKUP_EVERY_HOURS, 24) > 0 ? num(env.BACKUP_EVERY_HOURS, 24) : 24,
     pgDumpPath: (env.PG_DUMP || '').trim(),
-    ngrokDomain: ngrokDomainFrom(env.NGROK_DOMAIN),
     vapid: {
       publicKey: (env.VAPID_PUBLIC_KEY || '').trim(),
       privateKey: (env.VAPID_PRIVATE_KEY || '').trim(),

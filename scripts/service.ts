@@ -16,9 +16,23 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ngrokDomainFrom, ngrokHostOf, probe } from './tunnel.ts';
-
 export const LABEL = 'local.event-photos';
+
+/** Whether <base>/api/events answers the way a student's phone reaches it: ok, or why not. */
+export async function probe(base: string, ms: number): Promise<{ ok: boolean; reason: string }> {
+  try {
+    const r = await fetch(`${base}/api/events`, { signal: AbortSignal.timeout(ms), redirect: 'manual' });
+    await r.arrayBuffer().catch(() => null);
+    return { ok: r.status >= 200 && r.status < 300, reason: `HTTP ${r.status}` };
+  } catch (e) {
+    const err = e as Error & { cause?: { code?: string; message?: string } };
+    const reason =
+      err.name === 'TimeoutError' || err.name === 'AbortError'
+        ? `no answer in ${Math.round(ms / 1000)} seconds`
+        : err.cause?.code || err.cause?.message || err.message || String(e);
+    return { ok: false, reason };
+  }
+}
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PLIST = path.join(os.homedir(), 'Library', 'LaunchAgents', `${LABEL}.plist`);
 const LOG = path.join(ROOT, 'logs', 'service.log');
@@ -187,12 +201,11 @@ async function status(): Promise<void> {
   }
   const local = await probe(`http://127.0.0.1:${port}`, 3000);
   console.log(`App:            http://127.0.0.1:${port} ${local.ok ? 'answers' : `does not answer (${local.reason})`}`);
-  const domain = ngrokDomainFrom(env.NGROK_DOMAIN) || ngrokHostOf(env.PUBLIC_URL);
-  const publicUrl = domain ? `https://${domain}` : (env.PUBLIC_URL || '').replace(/\/+$/, '');
+  const publicUrl = (env.PUBLIC_URL || '').replace(/\/+$/, '');
   if (publicUrl && !/^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(publicUrl)) {
     const pub = await probe(publicUrl, 15_000);
     console.log(`Public link:    ${publicUrl} ${pub.ok ? 'answers' : `does NOT answer (${pub.reason})`}`);
-  } else console.log('Public link:    none (set NGROK_DOMAIN in server/.env)');
+  } else console.log('Public link:    none (set PUBLIC_URL in server/.env)');
   if (fs.existsSync(LOG)) {
     const lines = fs.readFileSync(LOG, 'utf8').split(/\r?\n/).filter((l) => l.trim()).slice(-10);
     console.log(`\nLast lines of ${path.relative(ROOT, LOG)}:`);
