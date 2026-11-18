@@ -401,3 +401,20 @@ NOTES.md               decisions made while building; paste it to your AI assist
 
 All API routes are under `/api`. Pages are `/`, `/e/<event>` and `/admin`. The Microsoft callback is
 `/admin/onedrive/callback` (for both OneDrive and Sign in with Microsoft); Sign in with Microsoft starts at `/auth/microsoft`.
+
+## Running on a server at smru-event-scanner.supercxo.ai
+
+Everything for the server is in `deploy/` (Docker Compose: the app, PostgreSQL 16, Redis 7 and Caddy for HTTPS).
+
+1. DNS: point an `A` record for `smru-event-scanner.supercxo.ai` at the server's IP. Open ports 80 and 443.
+2. Microsoft Entra: add these redirect URIs to the app registration:
+   `https://smru-event-scanner.supercxo.ai/admin/onedrive/callback` and
+   `https://smru-event-scanner.supercxo.ai/auth/microsoft/callback`.
+3. `cp deploy/production.env.example deploy/production.env` and fill it in (`PUBLIC_URL` is already the domain;
+   do not set `NGROK_DOMAIN` on a server). Optionally put `POSTGRES_PASSWORD=...` in `deploy/.env`.
+4. `docker compose -f deploy/docker-compose.yml up -d --build`
+
+Caddy gets the HTTPS certificate by itself. Photos and videos stay in OneDrive; the server keeps the database,
+Redis, temp files and the small view cache. QR codes, share links and emails all use `PUBLIC_URL`, so print new QR
+codes from the organiser page after the move. To bring over the events from this Mac, restore a `pg_dump` of the
+`event_photos` database into the `db` container before the first start.

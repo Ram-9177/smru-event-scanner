@@ -1,0 +1,52 @@
+# Event Photos on a server at https://smru-event-scanner.supercxo.ai
+#   1. Point the DNS A record of smru-event-scanner.supercxo.ai at this server; open ports 80 and 443.
+#   2. cp deploy/production.env.example deploy/production.env and fill it in.
+#   3. docker compose -f deploy/docker-compose.yml up -d --build
+# Caddy gets and renews the HTTPS certificate by itself. Photos and videos stay in OneDrive; the server keeps
+# the database, Redis, temp files and the small view cache (IMG_CACHE_MB).
+services:
+  app:
+    build: ..
+    restart: unless-stopped
+    env_file: production.env
+    environment:
+      DATABASE_URL: postgres://event_photos:${POSTGRES_PASSWORD:-change-me}@db:5432/event_photos
+      REDIS_URL: redis://redis:6379
+      TRUST_PROXY: "1"
+      HOST: 0.0.0.0
+    volumes:
+      - appdata:/data
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: event_photos
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: event_photos
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U event_photos"]
+      interval: 5s
+      retries: 20
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+    depends_on: [app]
+volumes:
+  appdata:
+  pgdata:
+  redisdata:
+  caddydata:

@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+server/data
+server/.env
+.env
+backups
+logs
+samples
+_backup
+_to_delete
+Event Photos (stand-in for OneDrive)
+.git

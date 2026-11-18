@@ -17,3 +17,4 @@ samples/
 .DS_Store
 *.sql
 *.pem
+deploy/production.env
