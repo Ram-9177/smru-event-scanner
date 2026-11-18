@@ -127,6 +127,35 @@ describe('Save original', () => {
     await new Promise((r) => setTimeout(r, 300)); // the temp file's removal reaches the next test's watch otherwise (macOS)
   });
 
+  it('a second student asking while the copy is still being kept gets the same photo, without the original fetched again', async () => {
+    const m = await byName('hall.jpg');
+    await h.ctx.db.query(`delete from full_copies where media_id = $1`, [m.id]);
+    await settle(h);
+    const d = h.ctx.drive as any;
+    const real = { upload: d.upload, uploadFile: d.uploadFile, readAll: d.readAll, download: d.download };
+    let open!: () => void;
+    const gate = new Promise<void>((r) => (open = r));
+    d.upload = async (...a: any[]) => (await gate, real.upload.apply(d, a));
+    d.uploadFile = async (...a: any[]) => (await gate, real.uploadFile.apply(d, a));
+    const seen: string[] = [];
+    try {
+      const first = await save(m.id); // made, and held on its way to OneDrive
+      expect(first.status).toBe(200);
+      d.readAll = (id: string, ...a: any[]) => (seen.push(id), real.readAll.call(d, id, ...a));
+      d.download = (id: string, ...a: any[]) => (seen.push(id), real.download.call(d, id, ...a));
+      const again = await save(m.id);
+      expect(again.status).toBe(200);
+      expect((again.body as Buffer).equals(first.body)).toBe(true);
+      expect(seen).not.toContain(m.onedrive_item_id);
+    } finally {
+      open();
+      Object.assign(d, real);
+    }
+    await settle(h);
+    expect((await h.ctx.db.query(`select 1 from full_copies where media_id = $1`, [m.id])).rows).toHaveLength(1);
+    await new Promise((r) => setTimeout(r, 300)); // as above: the temp file's removal reaches the next test's watch otherwise
+  });
+
   it('a video: its location-free copy kept in OneDrive is streamed', async () => {
     const m = await byName('clip.mp4');
     expect(m.clean_key).toMatch(/^od\//);

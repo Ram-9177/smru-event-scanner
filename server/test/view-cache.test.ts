@@ -100,6 +100,33 @@ describe('the view cache', () => {
     }
   });
 
+  it('an album opening (many views at once) gets every copy into the cache, a few at a time, none skipped', async () => {
+    const burst = await makeHarness({ viewCacheBytes: 50 * 1024 * 1024 });
+    try {
+      const ev = await makeEvent(burst, 'Burst Day', 'Burst Day');
+      for (let i = 0; i < 6; i++) burst.put('Burst Day', `b${i}.jpg`, await makePhoto(760 + i, [{ person: i % 2 ? PERSON.red : PERSON.blue }]));
+      await syncNow(burst, ev.id);
+      await burst.admin.patch(`/api/admin/events/${ev.id}`).send({ status: 'live' }).expect(200);
+      await settle(burst);
+      const photos = (await phone(burst, 'b').get(`/api/e/${ev.slug}/album`).expect(200)).body.photos;
+      expect(photos.length).toBe(6);
+      // every thumbnail and main view asked for at the same moment, as a phone does when the album opens
+      await Promise.all(photos.flatMap((p: any) => [request(burst.app).get(p.thumb).redirects(0), request(burst.app).get(p.web).redirects(0)]));
+      const rows = (await burst.ctx.db.query<any>(`select thumb_key, web_key from media where event_id = $1`, [ev.id])).rows;
+      const wanted = new Set(rows.flatMap((r) => [r.thumb_key, r.web_key]).filter(Boolean).map((k: string) => k.split('/')[1]));
+      expect(wanted.size).toBeGreaterThan(3); // more than are fetched at once
+      const bdir = path.join(burst.ctx.cfg.dataDir, 'cache');
+      const cached = () => new Set((fs.existsSync(bdir) ? fs.readdirSync(bdir) : []).map((f) => f.replace(/\.[^.]+$/, '')));
+      for (let i = 0; i < 200 && cached().size < wanted.size; i++) await new Promise((r) => setTimeout(r, 25));
+      expect([...cached()].sort()).toEqual([...wanted].sort());
+      // and the next views are all served from this server
+      const again = await Promise.all(photos.map((p: any) => request(burst.app).get(p.thumb).redirects(0)));
+      expect(again.map((r) => r.headers['x-served-from'])).toEqual(photos.map(() => 'cache'));
+    } finally {
+      await burst.close();
+    }
+  });
+
   it('with IMG_CACHE_MB=0 nothing is kept on this server', async () => {
     const off = await makeHarness({ viewCacheBytes: 0 });
     try {

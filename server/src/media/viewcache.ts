@@ -8,6 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import type { Ctx } from '../context.js';
+import { Queue } from '../lib/queue.js';
 import { diskSpace } from '../ops/disk.js';
 import { extOf, itemOf } from './copies.js';
 
@@ -15,6 +16,11 @@ import { extOf, itemOf } from './copies.js';
 const MAX_FILE = 8 * 1024 * 1024;
 /** Copies being fetched into the cache at the same moment. */
 const FILLS_AT_ONCE = 3;
+/**
+ * Copies waiting for their turn (an album opening asks for dozens at once: each waits, none is skipped). Past this,
+ * a view is still served from OneDrive, just without being queued for the cache.
+ */
+const MAX_WAITING = 500;
 
 interface Entry {
   file: string;
@@ -41,7 +47,7 @@ export function makeViewCache(ctx: Ctx): ViewCache {
   const index = new Map<string, Entry>();
   let total = 0;
   const filling = new Map<string, Promise<void>>();
-  let active = 0;
+  const fills = new Queue(FILLS_AT_ONCE);
   let warned = false;
 
   if (cap > 0 && fs.existsSync(dir)) {
@@ -78,9 +84,8 @@ export function makeViewCache(ctx: Ctx): ViewCache {
   }
 
   async function fill(key: string, id: string) {
-    active++;
     try {
-      // The cache never squeezes a nearly full Mac: uploads need that room more.
+      // The cache never squeezes a nearly full disk: uploads need that room more.
       const free = (await diskSpace(ctx.cfg)).free;
       if (free < ctx.cfg.uploadMinFreeBytes + cap) return;
       const data = await ctx.drive.readAll(id, MAX_FILE, undefined, { patient: false });
@@ -99,10 +104,8 @@ export function makeViewCache(ctx: Ctx): ViewCache {
       // A copy that cannot be fetched now is simply served from OneDrive; the next view tries again.
       if (!warned) {
         warned = true;
-        console.warn(`[event-photos] view cache: could not keep a copy on this Mac (${(e as Error)?.message ?? e}); photos are served from OneDrive.`);
+        console.warn(`[event-photos] view cache: could not keep a copy on this server (${(e as Error)?.message ?? e}); photos are served from OneDrive.`);
       }
-    } finally {
-      active--;
     }
   }
 
@@ -121,8 +124,8 @@ export function makeViewCache(ctx: Ctx): ViewCache {
         index.delete(id);
         total -= e.size;
       }
-      if (!filling.has(id) && active < FILLS_AT_ONCE) {
-        const p = fill(key, id).finally(() => filling.delete(id));
+      if (!filling.has(id) && filling.size < MAX_WAITING) {
+        const p = fills.push(() => fill(key, id)).finally(() => filling.delete(id));
         filling.set(id, p);
       }
       return null;

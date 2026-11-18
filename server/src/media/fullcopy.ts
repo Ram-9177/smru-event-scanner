@@ -59,6 +59,16 @@ const making = new Map<string, Promise<FullCopy>>();
 /** Bumped by dropFullCopies for each photo: a copy that was being made while its photo left the app is not kept. */
 const dropped = new Map<string, number>();
 
+/**
+ * The bytes of this photo's full-quality copy while this server is still keeping it in OneDrive (asked for moments
+ * ago), else null: the next student gets them without the original being fetched from OneDrive again.
+ */
+export function pendingFullCopy(mediaId: string, sha256: string | null, look: Look | null): Promise<Buffer> | null {
+  if (!sha256 || !UUID.test(mediaId)) return null;
+  const job = making.get(`${mediaId}:${recipeOf(sha256, look)}`);
+  return job ? job.then((j) => j.data) : null;
+}
+
 export interface FullCopy {
   data: Buffer;
   /** Resolves once the copy is kept in OneDrive (true) or could not be (false). Nobody has to wait for it. */

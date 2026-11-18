@@ -206,6 +206,7 @@ describe('through the app', () => {
       h.ctx.drive.download = real;
       h.ctx.drive.readAll = realAll;
     }
+    await settle(h); // keeping it in OneDrive runs in the background, after the first student already has it
     // kept in OneDrive's app folder (<event>/full), with its row; nothing on this server
     expect(copyFiles(h, e.id, 'full').filter((n) => n.startsWith(id))).toHaveLength(1);
     expect((await h.ctx.db.query(`select 1 from full_copies where media_id = $1`, [id])).rows).toHaveLength(1);

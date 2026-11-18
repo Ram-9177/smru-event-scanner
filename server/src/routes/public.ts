@@ -19,7 +19,7 @@ import { ingestUpload, ingestVideoUpload, uploadTypeOk, videoTypeOk } from '../m
 import { freeBytes, mimeOf, readRaw, receiveToFile, Slots } from '../lib/receive.js';
 import { cleanFileForHandover, cleanForHandover } from '../media/location.js';
 import { isHeic, type Look } from '../media/prepare.js';
-import { forgetFullCopy, keptFullCopy, makeFullCopy } from '../media/fullcopy.js';
+import { forgetFullCopy, keptFullCopy, makeFullCopy, pendingFullCopy } from '../media/fullcopy.js';
 import { cleanVideoCopy } from '../media/videocopy.js';
 import { sha256Buffer, sha256File } from '../lib/hashes.js';
 import { extOf, isDriveKey, itemOf, legacyPath } from '../media/copies.js';
@@ -180,6 +180,10 @@ export function publicRoutes(ctx: Ctx): Router {
     const look = lookOf(e, m);
     const kept = await keptFullCopy(ctx, m.id, m.sha256 ?? null, look);
     if (kept) return { kind: 'drive', itemId: kept.itemId, name: `${baseOf(m)}.jpg`, size: kept.bytes, full: true };
+    // Made moments ago and still being kept in OneDrive: the same bytes, without fetching the original again.
+    const pending = pendingFullCopy(m.id, m.sha256 ?? null, look);
+    const ready = pending ? await pending.catch(() => null) : null;
+    if (ready) return { kind: 'buffer', data: ready, name: `${baseOf(m)}.jpg` };
     if (!m.onedrive_item_id) throw new DriveNotFoundError();
     let buf: Buffer | null = null;
     try {

@@ -1,8 +1,12 @@
 **/node_modules
 **/dist
 server/data
-server/.env
-.env
+# Secrets never go into the image: settings come from deploy/production.env at run time.
+**/.env
+**/*.env
+!**/*.env.example
+*.pem
+*.sql
 backups
 logs
 samples
