@@ -61,6 +61,7 @@ export async function makeHarness(overrides: Partial<Config> = {}, opts: { drive
       adminPassword: ADMIN.password,
       orgName: 'Test College',
       workers: 3,
+      viewCacheBytes: 0, // the local view cache is off unless a test turns it on
       ...overrides,
     },
   );

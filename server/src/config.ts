@@ -115,6 +115,8 @@ export interface Config {
   imgRedirectMaxAge: number;
   /** Copies streamed through this server at the same moment (PIPES_AT_ONCE, 16). */
   pipesAtOnce: number;
+  /** Thumbnails and main-view copies kept on this server for speed, at most this many bytes (IMG_CACHE_MB, 300; 0 = off). Everything else lives only in OneDrive. */
+  viewCacheBytes: number;
   /** Album copies rebuilt from the originals at the same moment (REBUILD_AT_ONCE, 2) and per minute (REBUILD_PER_MIN, 60). */
   rebuildAtOnce: number;
   rebuildPerMin: number;
@@ -273,6 +275,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, overrides: Part
     driveUrlMarginMin: Math.max(1, num(env.DRIVE_URL_MARGIN_MIN, 20)),
     imgRedirectMaxAge: Math.max(0, num(env.IMG_REDIRECT_MAX_AGE, 300)),
     pipesAtOnce: Math.max(1, num(env.PIPES_AT_ONCE, 16)),
+    viewCacheBytes: Math.max(0, num(env.IMG_CACHE_MB, 300)) * 1024 * 1024,
     rebuildAtOnce: Math.max(1, num(env.REBUILD_AT_ONCE, 2)),
     rebuildPerMin: Math.max(1, num(env.REBUILD_PER_MIN, 60)),
     sceneCacheBytes: Math.max(0, num(env.SCENE_CACHE_MB, 256)) * 1024 * 1024,

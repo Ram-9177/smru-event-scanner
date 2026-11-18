@@ -10,6 +10,7 @@ import { checkImageLink } from '../lib/links.js';
 import { extOf, isDriveKey, isLegacyKey, itemOf, legacyPath, mimeOfExt } from '../media/copies.js';
 import { copyUrl, hasFlag, markDown, markThrottled, purgeUrls } from '../media/copyurls.js';
 import { kickRebuild, markHot } from '../media/rebuild.js';
+import { makeViewCache } from '../media/viewcache.js';
 
 /** OneDrive cannot be reached or needs signing in again: the album says photos cannot be loaded right now. */
 const UNAVAILABLE = ['DriveDownError', 'DriveAuthError'];
@@ -27,6 +28,8 @@ export function imageRoutes(ctx: Ctx): Router {
   const { cfg } = ctx;
   const r = Router();
   let pipes = 0;
+  /** Thumbnails and main-view copies, kept here up to IMG_CACHE_MB so the album opens fast; OneDrive stays the store. */
+  const views = makeViewCache(ctx);
 
   const preparing = (res: Response) =>
     res
@@ -88,6 +91,19 @@ export function imageRoutes(ctx: Ctx): Router {
 
     const pipe = req.query.pipe === '1' || (size === 'v' && cfg.videoVia === 'pipe');
     const cache = admin ? 'private, no-store' : `private, max-age=${cfg.imgRedirectMaxAge}`;
+    if (kind !== 'v') {
+      const local = views.get(key);
+      if (local) {
+        res.set({ 'Cache-Control': cache, 'X-Served-From': 'cache' });
+        res.type(mimeOfExt(extOf(key)));
+        return new Promise<void>((resolve) =>
+          res.sendFile(local, { acceptRanges: true }, (err) => {
+            if (err && !res.headersSent) res.status(503).set('Retry-After', '2').end();
+            resolve();
+          }),
+        );
+      }
+    }
     try {
       if (!pipe) {
         const url = await copyUrl(ctx, key, { eventId: row!.event_id, kind });
