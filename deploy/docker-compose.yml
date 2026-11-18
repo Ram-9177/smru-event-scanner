@@ -1,5 +1,5 @@
-# Event Photos on a server at https://smru-event-scanner.supercxo.ai
-#   1. Point the DNS A record of smru-event-scanner.supercxo.ai at this server; open ports 80 and 443.
+# Event Photos on a server at https://stmarys-event-scanner.supercxo.ai
+#   1. Point the DNS A record of stmarys-event-scanner.supercxo.ai at this server; open ports 80 and 443.
 #   2. Put the settings in deploy/.env (start from deploy/.env.example). That one file holds everything,
 #      the database password included; it is never committed and never put in the image.
 #   3. cd deploy && docker compose up -d --build

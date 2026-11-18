@@ -402,13 +402,13 @@ NOTES.md               decisions made while building; paste it to your AI assist
 All API routes are under `/api`. Pages are `/`, `/e/<event>` and `/admin`. The Microsoft callback is
 `/admin/onedrive/callback` (for both OneDrive and Sign in with Microsoft); Sign in with Microsoft starts at `/auth/microsoft`.
 
-## Running on a server at smru-event-scanner.supercxo.ai
+## Running on a server at stmarys-event-scanner.supercxo.ai
 
 Everything for the server is in `deploy/` (Docker Compose: the app, PostgreSQL 16, Redis 7 and Caddy for HTTPS).
 
-1. DNS: point an `A` record for `smru-event-scanner.supercxo.ai` at the server's IP. Open ports 80 and 443.
+1. DNS: point an `A` record for `stmarys-event-scanner.supercxo.ai` at the server's IP. Open ports 80 and 443.
 2. Microsoft Entra: add this redirect URI to the app registration (OneDrive and Microsoft sign-in both come back
-   to it): `https://smru-event-scanner.supercxo.ai/admin/onedrive/callback`.
+   to it): `https://stmarys-event-scanner.supercxo.ai/admin/onedrive/callback`.
 3. Settings: one private file, `deploy/.env` (never committed, never put in the image). Start from
    `deploy/.env.example`. `PUBLIC_URL` is the domain; leave out `NGROK_DOMAIN` (it would replace `PUBLIC_URL`) and
    `HOST` (Compose sets it). `POSTGRES_PASSWORD` is required: the server does not start without it.

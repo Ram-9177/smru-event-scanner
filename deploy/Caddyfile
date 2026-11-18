@@ -1,4 +1,4 @@
-smru-event-scanner.supercxo.ai {
+stmarys-event-scanner.supercxo.ai {
 	encode zstd gzip
 	# No body size limit here: the app sets its own limits for photo and video uploads.
 	reverse_proxy app:3000 {
