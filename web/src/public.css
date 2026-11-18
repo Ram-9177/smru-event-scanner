@@ -1,0 +1,489 @@
+/*
+  The student screens of the darkroom (web/DESIGN.md, from the owner's darkroom.html): Find (.fd) in the red-lit room,
+  Prints (.pr) with the lights on, the photo viewer (.vw), the dialogs over Prints, and the page that leads nowhere
+  (.nf). Tokens and the shared parts (film, pegs, prints, ticket, shutter, buttons, slips) live in styles.css and
+  darkroom.css; everything here is scoped to these screens.
+  A photo is never tinted: no filter and no colour is laid over a picture. The home's event cover and the thumbnails
+  under Earlier events show in true colour.
+*/
+@layer components {
+  /* =====================================================================================
+     FIND: your event, show your face
+     ===================================================================================== */
+  .fd { display: flex; flex-direction: column; overflow: clip; }
+  .fd-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; max-width: 600px; margin: 0 auto; padding: max(14px, env(safe-area-inset-top)) 20px 0; min-height: 52px; }
+  .fd-brand { display: flex; align-items: baseline; gap: 9px; min-width: 0; }
+  .fd-brand .wordmark, .pr-top .wordmark { white-space: nowrap; }
+  .fd-topr { display: flex; align-items: center; gap: 18px; }
+  .fd-nologin { display: none; font-size: 14px; color: var(--light-muted); }
+
+  .fd-grid { flex: 1 1 auto; width: 100%; max-width: 600px; margin: 0 auto; padding: 0 20px; display: flex; flex-direction: column; }
+  .fd-intro .fd-eyebrow, .fd-intro .fd-skip, .fd-sub .d { display: none; }
+  .fd-intro h1 { margin: 8px 0 0; font: 800 clamp(40px, 12.3vw, 48px)/0.92 var(--cond); text-transform: uppercase; color: var(--light); }
+  .fd-sub { margin: 8px 0 0; font-size: 15px; line-height: 1.35; color: var(--light-muted); }
+  .fd-skip a { color: var(--amber); text-decoration: underline; text-underline-offset: 4px; }
+
+  /* "Earlier events" in the top corner: a small outlined pill (phone: a clock and "Earlier") */
+  .fd-earlier { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; min-width: 44px; margin: 0; padding: 0 12px; border: 1.5px solid rgba(244, 238, 227, 0.45); border-radius: 22px; background: rgba(24, 21, 19, 0.5); color: var(--light); font: 700 14px/1 var(--cond); letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; cursor: pointer; }
+  .fd-earlier:hover { border-color: var(--light); }
+  .fd-earlier .d { display: none; }
+  /* with Earlier in the corner, a phone puts the college under the wordmark so both stay readable */
+  .fd-top.more .fd-brand { flex-direction: column; align-items: flex-start; gap: 3px; }
+  .fd-top.more .fd-topr { gap: 12px; }
+  .fd-latest { min-height: 44px; font-size: 14px; color: var(--amber); white-space: nowrap; }
+  .fd-latest:hover { color: var(--light); }
+
+  /* 01 Your event: the home's one event as a big film frame, its cover in true colour and outlined as the one picked */
+  .fd-now { margin: 8px -20px 0; }
+  .fd-big { position: relative; display: block; padding: 30px 14px 22px; background: var(--film); border-top: 1px solid var(--film-edge); border-bottom: 1px solid var(--film-edge); color: var(--light); }
+  .fd-big::before, .fd-big::after { content: ""; position: absolute; left: 0; right: 0; height: 7px; pointer-events: none; background: var(--holes); }
+  .fd-big::before { top: 5px; }
+  .fd-big::after { bottom: 5px; }
+  .fd-big .edge-print { position: absolute; left: 16px; top: 14px; font-size: 11px; line-height: 12px; letter-spacing: 0.14em; color: var(--amber); white-space: nowrap; gap: 5px; }
+  .fd-big .pic { display: block; width: 100%; aspect-ratio: 2.2 / 1; max-height: 180px; border-radius: 3px; overflow: hidden; background: #2a1512; outline: 2px solid var(--amber); }
+  .fd-big .pic img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .fd-big .pic .none { display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding: 0 8px; text-align: center; font: 700 13px var(--cond); letter-spacing: 0.14em; text-transform: uppercase; color: var(--light-muted); }
+  .fd-big .got { position: absolute; right: 22px; top: 38px; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 13px; background: var(--red); color: var(--room); font: 800 16px/26px var(--cond); text-align: center; }
+  .fd-big .fresh-mark { position: absolute; right: 22px; top: 70px; padding: 0 7px; height: 20px; border-radius: 10px; background: var(--paper); color: var(--pencil-ink); font: 800 13px/20px var(--cond); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; box-shadow: 0 0 0 2px var(--red); }
+  .fd-big .soon { position: absolute; left: 22px; bottom: 30px; padding: 2px 8px; background: var(--amber); color: var(--room); font: 800 13px/17px var(--cond); letter-spacing: 0.12em; text-transform: uppercase; transform: rotate(-4deg); }
+  .fd-big.ghost .pic { outline: 0; animation: dr-pulse 1.4s ease-in-out infinite alternate; }
+
+  /* the caption under the frame */
+  .fd-cap { margin-top: 8px; display: flex; align-items: flex-end; justify-content: space-between; gap: 10px; min-height: 44px; }
+  .fd-cap .t { margin: 0; font: 700 26px/1 var(--cond); text-transform: uppercase; letter-spacing: 0.01em; overflow-wrap: anywhere; color: var(--light); }
+  .fd-cap .m { margin-top: 4px; font-size: 13px; line-height: 16px; color: var(--light-muted); }
+  .fd-cap .slip { margin: 0; }
+  .fd-mine { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: 22px; border: 2px solid var(--red-text); color: var(--red-text); font: 700 15px var(--cond); letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; }
+  .fd-mine:hover { color: var(--room); background: var(--red-text); }
+  .fd-inline { display: inline; min-height: 0; color: inherit; font-weight: 700; }
+
+  /* the drying line with the blank print (phone: one print between two empty spaces) */
+  .fd-two { scroll-margin-top: 10px; }
+  .fd-line { position: relative; margin: 4px -20px 0; height: 226px; }
+  .fd-line::before { content: ""; position: absolute; left: 0; right: 0; top: 13px; height: 2px; background: #b39a8e; opacity: 0.8; }
+  .fd-nail { display: none; }
+  .fd-spare { position: absolute; top: 22px; width: 136px; height: 190px; border: 2px dashed rgba(244, 238, 227, 0.32); border-radius: 3px; transform-origin: 50% 0; }
+  .fd-spare.a { left: -58px; transform: rotate(-3deg); }
+  .fd-spare.b { right: -58px; transform: rotate(2.5deg); }
+  .fd .peg.fd-ga { left: 10px; margin: 0; opacity: 0.55; }
+  .fd .peg.fd-gb { left: auto; right: 10px; margin: 0; opacity: 0.55; }
+  .fd-blank { position: absolute; left: 50%; top: 0; width: 152px; height: 100%; margin-left: -76px; }
+  .fd-bl { position: absolute; left: 0; top: 22px; width: 100%; transform: rotate(1.5deg); transform-origin: 50% 0; }
+  .fd-paper { position: relative; display: block; width: 100%; margin: 0; border: 0; padding: 7px; border-radius: 2px; background: var(--paper); color: var(--paper-ink); text-align: left; box-shadow: 0 18px 30px rgba(0, 0, 0, 0.55); cursor: pointer; }
+  .fd-paper:disabled { cursor: default; }
+  .fd-well { position: relative; height: 176px; background: var(--paper-2); overflow: hidden; display: flex; align-items: flex-end; justify-content: center; }
+  .fd-well .sil { width: 132px; height: 143px; }
+  .fd-well .say { position: absolute; left: 4px; right: 4px; top: 6px; text-align: center; font-size: 22px; line-height: 23px; color: var(--pencil-ink); transform: rotate(-3deg); }
+  .fd-well img, .fd-well video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  /* a webcam picture shows the way the preview looked (a mirror); the picture itself is untouched */
+  .fd-well video, .fd-well img.flip, .retake .av img.flip { transform: scaleX(-1); }
+  /* "developing…" is a paper tag pinned to the print's lower edge: nothing is laid over the selfie */
+  .fd-well .veil { position: absolute; left: 50%; bottom: 8px; z-index: 1; transform: translateX(-50%) rotate(-3deg); padding: 0 10px; border-radius: 2px; background: var(--paper); color: var(--pencil-ink); font-size: 22px; line-height: 30px; white-space: nowrap; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35); }
+
+  /* the laptop's parts of the line: hidden on a phone */
+  .fd-acts, .fd-or, .fd-ticket { display: none; }
+
+  /* The dock: any message, the three controls and the consent line. On a phone it stays at the bottom of the screen,
+     so the red button and the line under it are always in view; its backdrop is the room itself (same colour, same
+     grain), edge to edge, so it never shows as a box. */
+  .fd-dock { position: relative; z-index: 3; margin: 0 -20px; padding: 2px 20px calc(10px + env(safe-area-inset-bottom)); }
+  .fd-dock .fd-msg { margin: 0 0 10px; }
+  .fd-dock .privacy { margin-top: 8px; font-size: 11.5px; line-height: 15px; }
+  @media (min-height: 560px) {
+    .fd-dock { position: sticky; bottom: 0; padding-top: 14px; }
+    .fd-dock::before, .fd-dock::after { content: ""; position: absolute; top: 0; bottom: 0; left: 50%; width: 100vw; margin-left: -50vw; z-index: -1; pointer-events: none; }
+    .fd-dock::before { background: linear-gradient(180deg, rgba(23, 10, 9, 0) 0, rgba(23, 10, 9, 0.9) 12px, var(--room) 24px); }
+    .fd-dock::after { opacity: 0.5; background-image: var(--grain); -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 24px); mask-image: linear-gradient(180deg, transparent 0, #000 24px); }
+  }
+  .fd-ctls { display: flex; align-items: flex-start; justify-content: space-between; }
+  .fd .ctl { min-height: 44px; }
+  .fd-add { margin: 4px 0 0; }
+  .fd-add.wideonly { display: none; }
+  /* For organisers: a real button at the very bottom of the page, after everything (the dock never covers it) */
+  .fd-staff { display: flex; justify-content: center; margin: 0; padding: 28px 20px calc(24px + env(safe-area-inset-bottom)); }
+  .fd-staff .btn { min-height: 44px; }
+  /* a campus link that matches no campus: a slip and the way to all the events */
+  .fd-bad { flex: 1 1 auto; display: grid; align-content: center; justify-items: center; gap: 18px; padding: 48px 20px; text-align: center; }
+  .fd-bad .slip { margin: 0; font-size: 16px; }
+  /* the phone's own camera: on the page (so a tap can open it) but never seen and never in the way */
+  .fd-pick { position: fixed; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+
+  /* a short phone screen: everything a little tighter, so the top of the blank print shows above the dock */
+  @media (max-width: 999px) and (max-height: 760px) {
+    .fd-top { min-height: 48px; padding-top: max(10px, env(safe-area-inset-top)); }
+    .fd-intro h1 { margin-top: 6px; font-size: clamp(36px, 10.6vw, 42px); }
+    .fd-sub { margin-top: 6px; font-size: 14px; }
+    .fd .stephead { margin-top: 12px; }
+    .fd-big { padding: 24px 14px 18px; }
+    .fd-big .pic { max-height: 104px; }
+    .fd-big .edge-print { top: 11px; }
+    .fd-big .got { top: 31px; }
+    .fd-big .fresh-mark { top: 61px; }
+    .fd-big .soon { bottom: 24px; }
+    .fd-cap { min-height: 42px; }
+    .fd-line { margin-top: 2px; }
+  }
+  /* the narrowest phones: the three controls still fit side by side */
+  @media (max-width: 359px) {
+    .fd .ctl, .fd .shutter { width: 88px; }
+    .fd-intro h1 { font-size: 36px; }
+    /* with Earlier in the corner: a smaller wordmark, so it never runs under the button */
+    .fd-top.more { gap: 8px; padding-left: 16px; padding-right: 16px; }
+    .fd-top.more .wordmark { font-size: 18px; letter-spacing: 0.1em; }
+    .fd-top.more .fd-topr { gap: 10px; }
+    .fd-top.more .fd-earlier { padding: 0 10px; }
+  }
+
+  /* =====================================================================================
+     PRINTS: your prints, and the whole event
+     ===================================================================================== */
+  .pr { position: relative; min-height: 100dvh; padding-bottom: 32px; color: var(--light); }
+  .pr.has-bar { padding-bottom: calc(118px + env(safe-area-inset-bottom)); }
+  .pr-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 56px; padding: max(6px, env(safe-area-inset-top)) 12px 6px 8px; }
+  .pr-top .l { display: flex; align-items: center; gap: 4px 14px; min-width: 0; }
+  .pr-top .back { flex: 0 0 auto; width: 44px; height: 44px; display: grid; place-items: center; border-radius: 50%; color: var(--light); }
+  .pr-top .back:hover { color: var(--amber); }
+  .pr-top .wordmark { display: none; }
+  .pr-top .edge-print { min-width: 0; font-size: 14px; }
+  .pr-top .edge-print span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 62vw; }
+  .retake { flex: 0 0 auto; min-width: 44px; min-height: 44px; display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 14px; color: var(--light); }
+  .retake:hover { color: var(--amber); }
+  .retake .av { width: 36px; height: 36px; border-radius: 50%; outline: 2px solid var(--light); outline-offset: 2px; overflow: hidden; background: var(--panel); display: grid; place-items: center; }
+  .retake .av img { width: 100%; height: 100%; object-fit: cover; }
+  .retake .lbl { display: none; }
+
+  .pr-hero { padding: 6px 20px 0; }
+  .pr-hero h1 { margin: 0; font: 800 clamp(38px, 11.8vw, 46px)/1 var(--cond); text-transform: uppercase; color: var(--light); }
+  .pr-hero .note { margin: 2px 0 0; font-size: 23px; line-height: 26px; color: var(--amber); transform: rotate(-1.5deg); transform-origin: 0 50%; }
+  .pr-hero .slip { margin: 12px 0 0; max-width: 520px; }
+  .pr-inline { display: inline; min-height: 0; color: inherit; font-weight: 700; }
+
+  /* My prints | All photos, and the downloads (a bar at the bottom on a phone) */
+  .pr-tools { padding: 14px 20px 0; }
+  .pr .pr-seg { margin: 0; }
+  .pr-tools .hint { display: none; }
+  .pr-acts { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; padding: 30px 20px calc(18px + env(safe-area-inset-bottom)); display: flex; gap: 10px; pointer-events: none; background: linear-gradient(180deg, rgba(24, 21, 19, 0) 0%, var(--bench) 46%); }
+  .pr-acts .btn { pointer-events: auto; }
+  .pr-acts .btn.primary, .pr-acts .btn.done { flex: 1 1 auto; min-width: 0; }
+  .pr-acts .btn span { overflow: hidden; text-overflow: ellipsis; }
+  .pr-kinds { padding: 12px 20px 0; }
+  .pr-kinds .chips { padding-bottom: 2px; }
+  .pr-padx { padding: 0 20px; }
+  .pr-quiet { margin: 8px 0 0; font-size: 13px; line-height: 18px; color: var(--light-muted); }
+
+  /* the line your prints hang from: wide photos hang on wider prints */
+  .pr-line { margin-top: 18px; padding: 0 20px; display: flex; flex-wrap: wrap; justify-content: center; column-gap: 22px; row-gap: 0; background: repeating-linear-gradient(180deg, transparent 0, transparent 13px, var(--string) 13px, var(--string) 15px, transparent 15px, transparent 276px); }
+  .pc { position: relative; flex: 0 0 auto; width: 156px; max-width: 100%; height: 276px; }
+  .pc.w { width: 295px; }
+  .pr-hang { position: absolute; left: 0; top: 22px; width: 100%; transform: rotate(var(--r, 0deg)); transform-origin: 50% 0; }
+  .pr .print { position: relative; cursor: pointer; }
+  .pr .print > img, .pr .print .pp { height: 208px; }
+  .pr .print .pp { display: block; }
+  .pc.on .print { outline: 3px solid var(--red); outline-offset: 3px; }
+  .pr button.tick { right: -12px; top: -12px; }
+  .pr .print .vbadge { left: 12px; bottom: 12px; }
+  .pc .lab { position: absolute; left: 0; right: 0; top: 223px; text-align: center; font-size: 20px; line-height: 22px; color: var(--amber); }
+  .pc.dev .print .pp { opacity: 0.5; animation: develop-wait 2.6s ease-in-out infinite alternate; }
+  .pc .q { position: absolute; left: -8px; top: -10px; z-index: 3; width: 30px; height: 30px; border-radius: 50%; background: var(--amber); color: var(--room); font-size: 24px; line-height: 30px; text-align: center; transform: rotate(-8deg); pointer-events: none; }
+  /* Hang your shots: the empty place on the line to add photos */
+  .pr-slot { position: relative; flex: 0 0 100%; min-width: 0; height: 172px; }
+  .pr-slot > a { position: absolute; left: 0; top: 24px; width: 100%; height: 128px; padding: 0 18px; border: 2px dashed rgba(244, 238, 227, 0.5); border-radius: 4px; background: rgba(244, 238, 227, 0.04); color: var(--light); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; }
+  .pr-slot > a:hover { background: rgba(244, 238, 227, 0.09); color: var(--light); }
+  .pr-slot .st { display: flex; align-items: center; gap: 8px; font: 700 19px var(--cond); letter-spacing: 0.1em; text-transform: uppercase; }
+  .pr-slot .sd { max-width: 22em; font-size: 13px; line-height: 18px; color: var(--light-muted); }
+  /* might be you (N) */
+  .pr-maybe { margin-top: 4px; padding: 6px 20px 0; }
+  .pr-maybe-h { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+  .pr-maybe h2 { margin: 0; font: 700 24px/26px var(--hand); text-transform: none; letter-spacing: 0; color: var(--amber); transform: rotate(-1.5deg); }
+  .pr-maybe .pr-line { padding: 0; margin-top: 12px; }
+
+  /* the contact sheet: frame numbers, your frames circled in red grease pencil, a check on the selected ones */
+  .pr-sheet { margin: 18px 14px 0; }
+  .pr-sh-a { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 16px; min-width: 0; }
+  .pr-sh-a > span:first-child { overflow-wrap: anywhere; }
+  .pr-frames { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 0; row-gap: 7px; }
+  .cf { position: relative; display: block; padding: 16px 3px 8px; margin: 0; border: 0; background: var(--film-frame); min-width: 0; cursor: pointer; }
+  .cf .no { position: absolute; left: 5px; top: 2px; display: flex; align-items: center; gap: 4px; font: 700 11px/13px var(--cond); letter-spacing: 0.12em; color: var(--amber); }
+  .cf .no .tri { border-left-width: 5px; border-top-width: 3px; border-bottom-width: 3px; }
+  .cf img { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; background: #241a17; }
+  .cf .circ { display: none; position: absolute; left: 0; right: 0; top: 10px; bottom: 2px; border: 3px solid var(--pencil); border-radius: 58% 42% 55% 45% / 46% 56% 44% 54%; transform: rotate(var(--r, 0deg)); pointer-events: none; }
+  .cf.me .circ { display: block; }
+  .cf .chk { display: none; position: absolute; right: 6px; top: 19px; width: 20px; height: 20px; border-radius: 50%; background: var(--red); color: var(--room); align-items: center; justify-content: center; }
+  .cf.on .chk { display: flex; }
+  .cf .vbadge { left: 6px; bottom: 11px; }
+  .cf:focus-visible { outline: 2px solid var(--amber); outline-offset: 0; z-index: 1; }
+  .pr-more { margin-top: 12px; display: flex; justify-content: center; }
+  .pr-more .btn { width: 100%; min-height: 48px; border-radius: 24px; font-size: 15px; }
+  .pr-empty { margin: 0; padding: 14px 3px 4px; }
+  .pr-sheet > .slip { margin: 12px 0 0; }
+
+  /* the album passcode, on a paper slip */
+  .pr-gate { margin: 18px 20px 0; max-width: 420px; padding: 18px; border-radius: 4px; background: var(--paper); box-shadow: 0 16px 30px rgba(0, 0, 0, 0.5); display: grid; gap: 12px; }
+  .pr-gate h2 { margin: 0; font: 800 26px/1 var(--cond); text-transform: uppercase; }
+  .pr-gate p { margin: 0; font-size: 15px; }
+  .pr-gate label { margin: 0 0 -6px; }
+  .pr-pad { padding: 18px 20px 0; display: flex; align-items: center; gap: 10px; }
+  .pr-pad .spin { margin: 0; }
+  .pr-pad .slip { margin: 0; }
+
+  /* the foot: the ticket, the fine print, Delete my results */
+  .pr-foot { padding: 32px 20px 0; display: grid; gap: 16px; }
+  .pr-foot .ticket { transform: rotate(-0.8deg); max-width: 440px; }
+  .pr-foot .fine { display: grid; gap: 8px; font-size: 13px; line-height: 18px; color: var(--light-muted); }
+  .pr-foot .fine p { display: flex; align-items: flex-start; gap: 7px; margin: 0; }
+  .pr-foot .fine svg { flex: 0 0 auto; margin-top: 2px; }
+  .pr-foot .fine .linkbtn { font-size: 13px; color: var(--light-muted); }
+  .pr-foot .fine .linkbtn:hover { color: var(--amber); }
+
+  /* ---- Keep me updated: a paper slip with a box to tick, and the New marks it brings ---- */
+  /* "New" on a print Keep me updated added since the last visit: a red tag pinned to its corner */
+  .pc .new-mark { position: absolute; left: -6px; top: -10px; z-index: 3; padding: 0 7px; height: 22px; border-radius: 2px; background: var(--red); color: var(--room); font: 800 13px/22px var(--cond); letter-spacing: 0.12em; text-transform: uppercase; transform: rotate(-5deg); pointer-events: none; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.35); }
+  .pr-keep { padding: 22px 20px 0; }
+  .pr-keep .keep-slip { margin: 0; max-width: 520px; padding: 14px 16px; display: grid; gap: 8px; }
+  .keep-box { position: relative; display: flex; align-items: center; gap: 12px; min-height: 44px; margin: 0; cursor: pointer; font: 700 18px/1.15 var(--cond); letter-spacing: 0.04em; text-transform: uppercase; color: var(--paper-ink); }
+  /* the real checkbox sits over the drawn one, unseen, so it still takes taps, keys and screen readers */
+  .keep-box input { position: absolute; left: 0; top: 50%; width: 28px; height: 28px; min-height: 0; margin: -14px 0 0; padding: 0; opacity: 0; cursor: pointer; }
+  .keep-tick { flex: 0 0 auto; width: 28px; height: 28px; border: 2px solid var(--paper-ink); border-radius: 3px; background: var(--field); color: transparent; display: grid; place-items: center; transform: rotate(-2deg); }
+  .keep-box input:checked + .keep-tick { background: var(--red); border-color: var(--red); color: var(--room); }
+  .keep-box input:focus-visible + .keep-tick { outline: 2px solid var(--focus); outline-offset: 3px; }
+  .keep-box input:disabled + .keep-tick, .keep-box input[aria-disabled="true"] + .keep-tick { opacity: 0.55; }
+  .keep-box:has(input:disabled) { cursor: default; }
+  .keep-why { margin: 0; font-size: 13px; line-height: 18px; color: var(--paper-muted); }
+  .keep-state:empty { display: none; }
+  .keep-say { margin: 0; font-size: 14px; line-height: 20px; }
+  .keep-err { margin: 0; font-size: 14px; line-height: 20px; font-weight: 600; color: var(--bad-ink); }
+  .keep-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 2px; }
+  .keep-acts .keep-say { flex: 1 1 100%; }
+  .pr-remove { display: grid; gap: 12px; }
+  .pr-remove > label[for] { margin: 0 0 -6px; display: block; }
+  .pr-remove textarea { min-height: 84px; }
+  /* Find: face search ended, the album instead */
+  .fd-acts .fd-ended { text-align: center; }
+
+  /* ---- the dialogs over Prints: Hang your shots, Delete my results? ---- */
+  .pr-dialog { max-height: calc(100dvh - 40px); overflow-y: auto; }
+  .pr-dialog:focus { outline: none; }
+  .pr-dialog .notice { margin: 0; }
+  .pr-dialog .uplist { margin: 0; box-shadow: none; outline: 1px solid var(--paper-line); }
+  /* Earlier events: one row per event, its cover small and in true colour */
+  .fd-evs { list-style: none; margin: 0; padding: 0; }
+  .fd-evs li + li { border-top: 1px solid var(--paper-line); }
+  .fd-ev { display: flex; align-items: center; gap: 12px; min-height: 64px; padding: 8px 4px; border-radius: 3px; color: var(--paper-ink); text-decoration: none; }
+  .fd-ev:hover { background: rgba(27, 18, 16, 0.06); }
+  .fd-ev .th { flex: 0 0 auto; display: grid; place-items: center; width: 72px; height: 48px; border-radius: 2px; overflow: hidden; background: var(--paper-2); color: var(--paper-muted); }
+  .fd-ev .th img { display: block; width: 100%; height: 100%; object-fit: cover; }
+  .fd-ev .tx { flex: 1 1 auto; min-width: 0; display: grid; gap: 3px; }
+  .fd-ev .t { font: 700 18px/1.05 var(--cond); letter-spacing: 0.02em; text-transform: uppercase; overflow-wrap: anywhere; }
+  .fd-ev .m { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 13px; line-height: 18px; color: var(--paper-muted); }
+  .fd-ev .tag { padding: 0 6px; border-radius: 2px; font: 800 11px/17px var(--cond); letter-spacing: 0.12em; text-transform: uppercase; }
+  .fd-ev .tag.soon { background: var(--amber); color: var(--room); }
+  .fd-ev .tag.shut { background: var(--paper-2); color: var(--paper-ink); }
+  .fd-ev .tag.now { background: var(--red); color: var(--room); }
+  .fd-ev .mine { flex: 0 0 auto; height: 24px; padding: 0 8px; border-radius: 12px; background: var(--red); color: var(--room); font: 800 13px/24px var(--cond); letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
+  .fd-ev > svg { flex: 0 0 auto; color: var(--paper-muted); }
+  .pr-dialog label.pr-choose { display: inline-flex; margin: 0; cursor: pointer; }
+  .pr-dialog label.pr-choose:focus-within { outline: 2px solid var(--focus); outline-offset: 3px; }
+  .pr-dialog label.pr-choose.disabled { opacity: 0.5; pointer-events: none; }
+  .pr-dialog .row .btn.ink { min-height: 56px; border-radius: 16px; }
+  .pr-add { display: grid; gap: 12px; border-radius: 4px; }
+  .pr-add.over { outline: 2px dashed var(--red); outline-offset: 8px; }
+  .pr-add > label[for] { margin: 0 0 -6px; display: block; }
+  .pr-shield { display: flex; gap: 8px; align-items: flex-start; }
+  .pr-shield svg { flex: none; margin-top: 1px; }
+  .pr-dialog details.more { margin-top: 0; }
+  .pr-dialog details.more .in { display: grid; gap: 8px; }
+  .pr-dialog details.more p { font-size: 13.5px; }
+
+  /* =====================================================================================
+     THE VIEWER: one photo or video, on a paper print in the dark
+     ===================================================================================== */
+  .viewer.vw { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: max(6px, env(safe-area-inset-top)) 20px calc(22px + env(safe-area-inset-bottom)); background: #0c0706; overflow-y: auto; }
+  .vw-top { flex: 0 0 auto; width: 100%; min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .vw-top .edge-print { min-width: 0; }
+  .vw-x { flex: none; width: 44px; height: 44px; padding: 0; margin: 0 -10px 0 0; border: 0; border-radius: 50%; background: transparent; color: var(--light); display: grid; place-items: center; cursor: pointer; }
+  .vw-x:hover { color: var(--amber); }
+  .vw-stage { flex: 1 1 auto; min-height: 0; width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px; touch-action: none; }
+  .vw-nav { flex: 0 0 auto; width: 44px; height: 64px; padding: 0; border: 0; border-radius: 10px; background: rgba(244, 238, 227, 0.08); color: var(--light); display: none; align-items: center; justify-content: center; cursor: pointer; }
+  .vw-nav:hover:not(:disabled) { background: rgba(244, 238, 227, 0.16); }
+  .vw-nav:disabled { opacity: 0.25; cursor: default; }
+  .vw-print { position: relative; min-width: 0; max-width: 100%; padding: 8px; border-radius: 2px; background: var(--paper); box-shadow: 0 24px 50px rgba(0, 0, 0, 0.7); transform: rotate(-1deg); overflow: hidden; }
+  .vw-print.is-video { transform: none; }
+  .viewer.vw .vw-print img { display: block; max-width: 100%; max-height: min(58vh, 620px); width: auto; height: auto; margin: 0; box-shadow: none; background: var(--paper-3); user-select: none; -webkit-user-drag: none; will-change: transform; }
+  .viewer.vw .vw-print video { display: block; max-width: 100%; max-height: min(58vh, 620px); margin: 0; background: #000; }
+  .vw-tag { margin: 0; min-height: 28px; font-size: 26px; line-height: 28px; color: var(--amber); transform: rotate(-3deg); text-align: center; }
+  .vw-acts { flex: 0 0 auto; display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 100%; }
+  .vw-acts .vw-dl { flex: 1 1 200px; max-width: 320px; }
+  .vw-dl > span { display: grid; justify-items: start; line-height: 1.05; }
+  .vw-dl small { font: 600 12px/1.2 var(--sans); letter-spacing: 0; text-transform: none; }
+  .vw-trouble { margin: 0; }
+  .vw-links { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 18px; }
+  .vw-links .linkbtn { color: var(--light-muted); font-size: 14px; }
+  .vw-links .linkbtn:hover { color: var(--amber); }
+  .vw-links .linkbtn:disabled { cursor: default; text-decoration: none; }
+  /* Report this photo: the reasons on a paper slip under the links. */
+  .vw-report { flex: 1 1 100%; width: 100%; max-width: 440px; margin: 4px auto 0; }
+  .vw-report-h { margin: 0 0 8px; font-weight: 700; }
+  .vw-report label { margin-top: 0; }
+  .vw-report .row { margin-top: 10px; align-items: center; gap: 8px; }
+  .vw-report .row > * { flex: 1 1 auto; min-width: 0; }
+  .vw-report .row > .linkbtn { flex: 0 0 auto; }
+  .vw-links .vw-report .linkbtn { color: var(--muted); }
+  .vw-links .vw-report .linkbtn:hover { color: var(--ink); }
+  @media (min-width: 1000px), (pointer: fine) { .vw-nav { display: flex; } }
+
+  /* =====================================================================================
+     A PAGE THAT LEADS NOWHERE: an empty frame in the red-lit room
+     ===================================================================================== */
+  .nf { display: grid; place-items: center; padding: 48px 20px; text-align: center; }
+  .nf-in { max-width: 440px; display: grid; justify-items: center; gap: 14px; }
+  .nf-frame { position: relative; width: 210px; padding: 22px 10px; background: var(--film); border-top: 1px solid var(--film-edge); border-bottom: 1px solid var(--film-edge); transform: rotate(-2deg); }
+  .nf-frame::before, .nf-frame::after { content: ""; position: absolute; left: 0; right: 0; height: 7px; background: var(--holes); }
+  .nf-frame::before { top: 5px; }
+  .nf-frame::after { bottom: 5px; }
+  .nf-frame .edge-print { font-size: 11px; color: var(--amber); }
+  .nf-pic { display: grid; place-items: center; height: 116px; margin-top: 6px; border-radius: 3px; background: #2a1512; color: var(--light-muted); }
+  .nf h1 { margin: 10px 0 0; color: var(--light); }
+  .nf p { margin: 0; color: var(--light-muted); }
+
+  /* =====================================================================================
+     Motion: the blank print sways on the line and holds still when you reach for it; all off with reduced motion
+     ===================================================================================== */
+  @keyframes fd-sway { 0%, 100% { transform: rotate(1.5deg); } 50% { transform: rotate(-1.2deg); } }
+  @keyframes fd-sway-d { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.1deg); } }
+  @media (prefers-reduced-motion: no-preference) {
+    .fd-bl { animation: fd-sway 5.5s ease-in-out infinite; }
+    .fd-bl.still { animation: none; }
+    .fd-bl:hover, .fd-bl:focus-within { animation-play-state: paused; }
+  }
+
+  /* =====================================================================================
+     LAPTOP (1000px and up): two columns on Find, wide lines and sticky tools on Prints
+     ===================================================================================== */
+  @media (min-width: 1000px) {
+    /* ---- Find ---- */
+    .fd-top { max-width: none; min-height: 76px; padding: 12px 5%; }
+    .fd-nologin { display: inline; }
+    .fd-grid { max-width: none; flex-direction: row; flex-wrap: wrap; align-items: center; align-content: center; gap: 40px 56px; padding: 8px 5% 40px; }
+    .fd-intro { flex: 1 1 360px; min-width: 0; max-width: 520px; }
+    .fd-steps { flex: 2 1 580px; min-width: 0; }
+    .fd-intro .fd-eyebrow { display: block; margin: 0; font-size: 27px; line-height: 30px; color: var(--amber); transform: rotate(-2deg); transform-origin: 0 50%; }
+    .fd-intro h1 { font-size: clamp(52px, 7.2vw, 104px); line-height: 0.9; }
+    .fd-sub { margin-top: 22px; max-width: 26em; font-size: 18px; line-height: 1.45; }
+    .fd-sub .m { display: none; }
+    .fd-sub .d { display: inline; }
+    .fd-intro .fd-skip { display: block; margin: 22px 0 0; font-size: 16px; line-height: 24px; }
+    .fd-steps > .stephead:first-child { margin-top: 0; }
+    .fd-top.more .fd-brand { flex-direction: row; align-items: baseline; gap: 9px; }
+    .fd-top.more .fd-topr { gap: 18px; }
+    .fd-earlier { padding: 0 16px; font-size: 15px; }
+    .fd-earlier .m { display: none; }
+    .fd-earlier .d { display: inline; }
+    .fd-now { margin: 10px 0 0; max-width: 640px; }
+    .fd-big { padding: 40px 16px 30px; border: 1px solid var(--film-edge); border-radius: 4px; }
+    .fd-big::before, .fd-big::after { height: 9px; background: repeating-linear-gradient(90deg, var(--film-holes) 0 14px, transparent 14px 26px); }
+    .fd-big::before { top: 9px; }
+    .fd-big::after { bottom: 9px; }
+    .fd-big .edge-print { left: 18px; top: 20px; font-size: 13px; line-height: 14px; }
+    .fd-big .pic { aspect-ratio: 16 / 9; max-height: 300px; border-radius: 4px; outline-width: 3px; }
+    .fd-big .got { right: 28px; top: 50px; min-width: 30px; height: 30px; border-radius: 15px; font-size: 18px; line-height: 30px; }
+    .fd-big .fresh-mark { right: 28px; top: 88px; }
+    .fd-big .soon { left: 28px; bottom: 42px; font-size: 15px; line-height: 20px; }
+    .fd-cap { margin-top: 12px; align-items: center; justify-content: flex-start; flex-wrap: wrap; gap: 6px 18px; min-height: 0; }
+    .fd-cap > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
+    .fd-cap .t { font-size: 34px; }
+    .fd-cap .m { margin-top: 0; font-size: 15px; line-height: 20px; }
+    .fd-steps .fd-two { margin-top: 30px; }
+
+    .fd-line { height: auto; margin: 6px -90px 0 0; padding: 0 30px 0 0; display: flex; flex-wrap: wrap; column-gap: 20px; row-gap: 0; background: repeating-linear-gradient(180deg, transparent 0, transparent 15px, #b39a8e 15px, #b39a8e 17px, transparent 17px, transparent 320px); }
+    .fd-line::before { display: none; }
+    .fd-nail { display: block; position: absolute; left: -5px; top: 11px; width: 10px; height: 10px; border-radius: 50%; background: var(--light-muted); box-shadow: 0 2px 4px rgba(0, 0, 0, 0.6); }
+    .fd-spare, .fd .peg.fd-ga, .fd .peg.fd-gb { display: none; }
+    .fd-line .peg { top: 3px; width: 12px; height: 30px; margin-left: -6px; box-shadow: inset 0 -13px 0 var(--peg-d), 0 2px 4px rgba(0, 0, 0, 0.5); }
+    .fd-blank { position: relative; left: auto; flex: 0 0 auto; width: 184px; height: 320px; margin: 0 0 0 8px; }
+    .fd-bl { top: 26px; transform: rotate(-1.5deg); }
+    .fd-paper { padding: 8px; box-shadow: 0 20px 34px rgba(0, 0, 0, 0.55); }
+    .fd-well { height: 224px; }
+    .fd-well .sil { width: 158px; height: 171px; }
+    .fd-well .say { top: 8px; font-size: 25px; line-height: 26px; }
+    .fd-acts { flex: 0 0 auto; width: 184px; height: 320px; padding-top: 58px; display: flex; flex-direction: column; gap: 12px; }
+    .fd-acts .btn { width: 100%; padding: 0 12px; white-space: nowrap; }
+    .fd-acts .btn.primary { min-height: 60px; gap: 8px; border-radius: 30px; font-size: 18px; letter-spacing: 0.06em; box-shadow: 0 0 30px 0 rgba(255, 74, 54, 0.45); }
+    .fd-acts .btn.ghost { min-height: 52px; border-radius: 26px; background: transparent; font: 600 16px var(--sans); letter-spacing: 0; text-transform: none; }
+    .shut-ring { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 3px solid var(--room); }
+    .fd-acts .privacy { margin-top: 2px; justify-content: flex-start; text-align: left; font-size: 13px; line-height: 18px; }
+    .fd-or { display: block; flex: 0 0 auto; width: 22px; height: 320px; padding-top: 104px; text-align: center; font-size: 28px; line-height: 28px; color: var(--light-muted); }
+    .fd-ticket { display: block; position: relative; flex: 0 0 auto; width: 264px; height: 320px; }
+    .fd-ticket .th { position: absolute; left: 0; top: 26px; width: 100%; transform: rotate(2deg); transform-origin: 50% 0; }
+    .fd-ticket .ticket { box-shadow: 0 20px 34px rgba(0, 0, 0, 0.55); }
+    .fd-ticket .ticket-qr svg { width: 96px; height: 96px; }
+    .fd-ticket .ticket-t { font-size: 21px; line-height: 0.98; }
+    .fd-ticket .ticket-tx { padding: 12px 12px 12px 14px; gap: 6px; }
+    .fd-ticket .hn { display: block; margin-top: 14px; text-align: center; font-size: 23px; line-height: 26px; color: var(--amber); }
+    .fd-dock { display: contents; }
+    .fd-dock::before, .fd-dock::after { content: none; }
+    .fd-ctls, .fd-dock > .privacy { display: none; }
+    .fd-dock .fd-msg { margin: 12px 0 0; max-width: 620px; }
+    .fd-add.wideonly { display: inline-flex; }
+    .fd-staff { padding: 8px 5% 40px; }
+    @keyframes fd-sway { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.1deg); } }
+
+    /* ---- Prints ---- */
+    .pr, .pr.has-bar { padding-bottom: 0; }
+    .pr-top { min-height: 76px; padding: 12px 5%; flex-wrap: wrap; gap: 8px 24px; }
+    .pr-top .back { margin-left: -10px; }
+    .pr-top .wordmark { display: inline; font-size: 26px; }
+    .pr-top .edge-print { font-size: 15px; }
+    .pr-top .edge-print span { max-width: 40vw; }
+    .retake .lbl { display: inline; text-decoration: underline; text-underline-offset: 4px; }
+    .pr-hero { padding: 8px 5% 0; }
+    .pr-hero h1 { font-size: clamp(50px, 8.2vw, 120px); line-height: 0.92; }
+    .pr-hero .note { margin-top: 6px; font-size: 30px; line-height: 34px; transform: rotate(-1.2deg); }
+    .pr-tools { position: sticky; top: 0; z-index: 5; padding: 16px 5% 14px; background: rgba(24, 21, 19, 0.94); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 24px; }
+    .pr-tools .hint { display: block; flex: 1 1 240px; min-width: 0; font-size: 14px; line-height: 20px; color: var(--light-muted); }
+    .pr-acts { position: static; padding: 0; background: none; pointer-events: auto; flex-wrap: wrap; }
+    .pr-acts .btn.primary, .pr-acts .btn.done { flex: 0 0 auto; padding: 0 28px; font-size: 20px; box-shadow: none; }
+    .pr-acts .btn.ghost { font-size: 16px; background: transparent; }
+    .pr-kinds { padding: 14px 5% 0; }
+    .pr-padx { padding: 0 5%; }
+    .pr-line { margin-top: 14px; padding: 0 5%; justify-content: flex-start; column-gap: 28px; background: repeating-linear-gradient(180deg, transparent 0, transparent 15px, var(--string) 15px, var(--string) 17px, transparent 17px, transparent 348px); }
+    .pc { width: 198px; height: 348px; }
+    .pc.w { width: 375px; }
+    .pr-hang { top: 27px; }
+    .pr .print { padding: 8px; box-shadow: 0 18px 32px rgba(0, 0, 0, 0.5); }
+    .pr .print > img, .pr .print .pp { height: 264px; }
+    .pc.on .print { outline-offset: 4px; }
+    .pr button.tick { right: -10px; top: -10px; }
+    .pr button.tick > i { width: 28px; height: 28px; }
+    .pc .lab { top: 284px; font-size: 23px; line-height: 24px; }
+    .pr-slot { flex: 1 1 260px; max-width: 560px; height: 348px; }
+    .pr-slot > a { top: 28px; height: 280px; padding: 0 28px; gap: 10px; }
+    .pr-slot .st { font-size: 24px; gap: 10px; }
+    .pr-slot .sd { font-size: 15px; line-height: 21px; }
+    .pr-maybe { padding: 10px 5% 0; }
+    .pr-keep { padding: 28px 5% 0; }
+    .pr-maybe h2 { font-size: 30px; line-height: 32px; }
+    .pr-sheet { margin: 18px 5% 0; }
+    .pr-frames { grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); row-gap: 10px; }
+    .cf { padding: 20px 4px 11px; }
+    .cf .no { left: 7px; top: 3px; font-size: 12px; line-height: 14px; }
+    .cf .circ { top: 12px; bottom: 3px; border-width: 4px; }
+    .cf .chk { right: 9px; top: 25px; width: 24px; height: 24px; }
+    .pr-more { margin-top: 16px; }
+    .pr-more .btn { width: auto; padding: 0 28px; font-size: 16px; }
+    .pr-gate { margin: 18px 5% 0; }
+    .pr-pad { padding: 18px 5% 0; }
+    .pr-foot { padding: 36px 5% 44px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 24px 40px; }
+    .pr-foot .ticket { flex: 0 1 440px; }
+    .pr-foot .ticket-qr svg { width: 96px; height: 96px; }
+    .pr-foot .ticket-t { font-size: 24px; }
+    .pr-foot .ticket-d { font-size: 14px; line-height: 19px; }
+    .pr-foot .fine { flex: 0 1 430px; font-size: 14px; line-height: 20px; }
+
+    /* ---- the viewer ---- */
+    .viewer.vw { padding: 10px 5% 28px; gap: 14px; }
+    .vw-print { padding: 10px; }
+    .viewer.vw .vw-print img, .viewer.vw .vw-print video { max-height: min(62vh, 640px); }
+    .vw-tag { font-size: 30px; line-height: 32px; }
+    .vw-acts .vw-dl { flex: 0 0 auto; padding: 0 28px; font-size: 20px; }
+  }
+}

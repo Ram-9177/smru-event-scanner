@@ -1,0 +1,50 @@
+{
+  "name": "event-photos-server",
+  "private": true,
+  "version": "0.2.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "build": "tsc -p tsconfig.build.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "admin:create": "tsx src/cli/create-admin.ts",
+    "db:migrate": "tsx src/cli/migrate.ts",
+    "adopt-local": "tsx src/cli/adopt-local-files.ts"
+  },
+  "dependencies": {
+    "@techstark/opencv-js": "^5.0.0-release.1",
+    "bcrypt": "^6.0.0",
+    "exif-reader": "^2.0.3",
+    "express": "^4.22.3",
+    "ioredis": "^6.0.0",
+    "jsonwebtoken": "^9.0.3",
+    "knex": "^3.3.0",
+    "nodemailer": "^10.6.0",
+    "onnxruntime-node": "^1.31.1",
+    "openid-client": "^6.9.0",
+    "pg": "^8.23.1",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.35.5",
+    "web-push": "^4.0.0",
+    "yazl": "^3.3.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/express": "^4.17.25",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^26.6.6",
+    "@types/nodemailer": "^8.0.2",
+    "@types/pg": "^8.23.1",
+    "@types/qrcode": "^1.5.6",
+    "@types/supertest": "^7.2.1",
+    "@types/web-push": "^3.6.4",
+    "@types/yazl": "^3.3.1",
+    "supertest": "^7.3.2",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.0"
+  }
+}

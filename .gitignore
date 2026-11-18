@@ -1,0 +1,19 @@
+node_modules/
+dist/
+data/
+.env
+face-service/models/
+proof_out/
+*.log
+.tools/
+logs/
+face-service/.venv/
+Event Photos (stand-in for OneDrive)/
+
+backups/
+_backup/
+_to_delete/
+samples/
+.DS_Store
+*.sql
+*.pem

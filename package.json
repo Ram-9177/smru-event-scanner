@@ -1,0 +1,22 @@
+{
+  "name": "event-photos",
+  "private": true,
+  "version": "0.2.0",
+  "description": "Event Photos PWA: one link, selfie search, full album, crowd uploads. Photos live in OneDrive. Node.js + TypeScript, PostgreSQL 16, Redis 7, React 19.",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "demo": "node scripts/dev.ts --demo",
+    "launch": "node scripts/start.ts",
+    "service": "node scripts/service.ts",
+    "dev": "node scripts/dev.ts",
+    "build": "npm run build -w web && npm run build -w server",
+    "start": "npm run start -w server",
+    "test": "npm run test -w server && npm run test -w web && npm run test:scripts",
+    "test:scripts": "node --test scripts/*.test.ts",
+    "typecheck": "npm run typecheck -w server && npm run typecheck -w web && tsc -p scripts",
+    "e2e": "node scripts/e2e-real.ts"
+  }
+}

@@ -1,0 +1,166 @@
+/* People: the same bench as the console, lights on. Each person is a print of their face hanging from a peg on the
+   drying line; their reference faces hang the same way; what is filed for them is a contact sheet.
+   Shared parts (.peg, .hang, .print, .sheet, .slip, .drop, .edge-print, .note-hand) live in styles.css and darkroom.css.
+   A photo is never tinted here: prints only fade in (devin) and end on their true colours. */
+@layer components {
+  /* ---- the header ---- */
+  .p-top h1 { margin: 6px 0 0; }
+  .p-top .p-note { margin: 2px 0 10px; font-size: 26px; }
+  .p-none { margin: 18px 0 0; font-size: 24px; }
+
+  /* ---- the drying line: a grid of cells, each with a peg and its own length of string ---- */
+  .p-line { list-style: none; margin: 18px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); column-gap: 22px; row-gap: 22px; }
+  .p-cell { position: relative; min-width: 0; }
+  .p-cell::before { content: ""; position: absolute; left: -11px; right: -11px; top: 13px; height: 2px; background: var(--string); opacity: 0.8; pointer-events: none; }
+  .p-cell .peg { z-index: 3; }
+
+  /* a person's print: the face in the well, the name in condensed capitals and the role handwritten on the paper */
+  .p-print { max-width: 236px; margin: 0 auto; padding: 7px 7px 10px; }
+  .p-well { position: relative; display: block; aspect-ratio: 1; overflow: hidden; background: var(--paper-2); color: var(--paper-muted); }
+  .p-well > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .p-sil { position: absolute; left: 10%; bottom: 0; width: 80%; height: auto; }
+  /* initials sit in the dashed head until there is a face photo */
+  .p-well .face.none { position: absolute; left: 50%; top: 52%; transform: translate(-50%, -50%); width: auto !important; height: auto !important; background: none; box-shadow: none; border-radius: 0; color: var(--paper-ink); font-size: 24px !important; letter-spacing: 0.06em; }
+  .p-say { position: absolute; left: 4px; right: 4px; top: 16px; text-align: center; font: 700 21px/1 var(--hand); color: var(--pencil-ink); transform: rotate(-3deg); }
+  .p-name { display: block; margin-top: 9px; font: 800 19px/1.02 var(--cond); letter-spacing: 0.02em; text-transform: uppercase; color: var(--paper-ink); overflow-wrap: anywhere; }
+  .p-role { display: block; margin-top: 3px; font: 700 20px/1.05 var(--hand); color: var(--pencil-ink); overflow-wrap: anywhere; }
+
+  /* the whole cell is the link: print, counts and folder edge */
+  .p-link { position: relative; display: block; color: var(--ink); text-decoration: none; border-radius: var(--r); }
+  .p-link:hover { color: var(--ink); }
+  .p-link:focus-visible { outline: 2px solid var(--focus); outline-offset: 4px; }
+  .p-below { display: grid; justify-items: start; gap: 6px; margin-top: 14px; padding: 0 2px; min-width: 0; }
+  .p-below .pill { margin: 0; }
+
+  /* Solo, Duo and Group as edge print */
+  .p-counts { margin: 0; align-items: center; gap: 4px 10px; }
+  .p-counts .tri { color: var(--edge); margin-right: -4px; }
+  .p-counts > span { color: var(--edge); font-size: 13px; letter-spacing: 0.14em; }
+  .p-counts > span b { color: var(--ink); }
+  /* the folder, printed along the bottom like an edge code */
+  .p-edge { display: block; max-width: 100%; font: 700 11.5px/1.3 var(--cond); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .p-edge i { font-style: normal; color: var(--edge); margin-right: 4px; }
+
+  /* the empty place at the end of the line: a dashed slot to hang the next one */
+  .p-slotcell { display: flex; flex-direction: column; padding-top: 24px; }
+  .p-slotcell > :is(.p-slot, .drop) { flex: 1 1 auto; min-height: 196px; margin: 0; }
+  .p-slotcell.first { grid-column: 1 / -1; }
+  .p-slotcell.first > :is(.p-slot, .drop) { min-height: 150px; }
+  .p-slot { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 18px; text-align: center; border: 2px dashed rgba(244, 238, 227, 0.5); border-radius: var(--r); background: rgba(244, 238, 227, 0.04); color: var(--light); text-decoration: none; transition: background 0.15s, border-color 0.15s; }
+  .p-slot:hover { color: var(--light); background: rgba(244, 238, 227, 0.09); border-color: rgba(244, 238, 227, 0.75); }
+  .p-slot:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+  .p-slot .st { display: inline-flex; flex-direction: column; align-items: center; gap: 8px; font: 700 19px/1.1 var(--cond); letter-spacing: 0.1em; text-transform: uppercase; }
+  .p-slot .sd { max-width: 22em; font-size: 13px; line-height: 18px; color: var(--light-muted); }
+
+  /* ---- how it works: three paper slips ---- */
+  .p-howto { margin-top: 40px; }
+  .p-how { list-style: none; margin: 12px 0 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .p-how li.slip { display: grid; align-content: start; gap: 3px; max-width: none; margin: 0; padding: 12px 14px 14px; }
+  .p-how li.slip:nth-child(1) { transform: rotate(-0.8deg); }
+  .p-how li.slip:nth-child(2) { transform: rotate(0.6deg); }
+  .p-how li.slip:nth-child(3) { transform: rotate(-0.4deg); }
+  .p-how li i { font: 800 15px var(--cond); font-style: normal; letter-spacing: 0.14em; color: var(--pencil-ink); }
+  .p-how li b { font: 800 19px/1.05 var(--cond); text-transform: uppercase; color: var(--ink); overflow-wrap: anywhere; }
+  .p-how li span { font-size: 13.5px; line-height: 1.35; color: var(--muted); }
+
+  /* ---- adding a person: the steps, the form on paper, and a preview print on its own bit of line ---- */
+  .p-new { max-width: 900px; }
+  .p-steps { list-style: none; margin: 0 0 18px; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 22px; }
+  .p-steps li { display: inline-flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 2px solid transparent; font: 700 14px var(--cond); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  .p-steps li i { font-style: normal; }
+  .p-steps li[aria-current="step"] { color: var(--ink); border-bottom-color: var(--red); }
+  .p-steps li[aria-current="step"] i { color: var(--edge); }
+  .p-new-body { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 40px; align-items: start; }
+  .p-new-body > .card { margin: 0; }
+  .p-new-body > .card > p:first-child { margin-bottom: 14px; }
+  .p-new-print { padding-top: 4px; }
+  .p-new-print .p-cell::before { left: -24px; right: -24px; }
+  .p-folder-line { display: flex; margin-top: 18px; font-size: 12px; line-height: 1.4; overflow-wrap: anywhere; }
+
+  /* ---- one person ---- */
+  .p-page { max-width: 1100px; }
+  .p-head { display: grid; grid-template-columns: 220px minmax(0, 1fr); grid-template-rows: auto 1fr; grid-template-areas: "print info" "print where"; align-content: start; column-gap: 40px; row-gap: 6px; margin: 4px 0 8px; }
+  .p-portrait { grid-area: print; }
+  .p-portrait .p-print { max-width: none; }
+  .p-portrait .p-role { margin-top: 10px; text-align: center; font-size: 25px; }
+  .p-portrait .p-well .face.none { font-size: 34px !important; }
+  .p-info { grid-area: info; display: grid; justify-items: start; align-content: start; gap: 10px; padding-top: 30px; min-width: 0; }
+  .p-info .p-counts > span { font-size: 15px; }
+  .p-filed-n { margin: 2px 0 0; font-size: 25px; }
+  .p-where { grid-area: where; min-width: 0; }
+  .p-where .notice { margin: 12px 0 0; }
+  .p-folder.slip { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 6px 0 0; padding: 12px 14px; max-width: 660px; }
+  .p-folder-i { flex: none; color: var(--edge); }
+  .p-folder-t { flex: 1 1 240px; min-width: 0; }
+  .p-folder p { font-size: 14px; line-height: 1.4; }
+  .p-folder b { color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+  .p-inside { margin-top: 4px !important; font: 700 12px/1.3 var(--cond); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .p-folder .btn { margin-left: auto; }
+
+  .p-sec { margin-top: 36px; }
+  .p-sec-h h2 { margin: 4px 0 0; font: 800 28px/1.05 var(--cond); letter-spacing: 0.01em; text-transform: uppercase; color: var(--ink); }
+  .p-sec .notice { margin: 14px 0 0; }
+
+  /* the reference faces on their line; the x on each takes two taps */
+  .p-refline { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .p-refline .p-print { max-width: 180px; padding-bottom: 7px; }
+  .p-ref .print-tag { display: block; margin-top: 10px; font-size: 21px; }
+  .p-ref.ask .print-tag { color: var(--red-text); }
+  .p-ref .hang { max-width: 180px; margin: 0 auto; }
+  .p-x { position: absolute; top: 10px; right: -14px; z-index: 4; width: 44px; height: 44px; padding: 0; margin: 0; border: 0; border-radius: 50%; background: transparent; color: var(--light); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  .p-x > i { width: 30px; height: 30px; border-radius: 50%; background: var(--bench); box-shadow: 0 0 0 2px var(--paper), 0 4px 10px rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+  .p-x:hover > i { background: var(--panel); }
+  .p-x:focus-visible { outline: 2px solid var(--focus); outline-offset: 0; }
+  .p-ref.ask .p-x > i { background: var(--red); color: var(--room); box-shadow: 0 0 0 2px var(--red), 0 0 18px -2px var(--red); }
+  .p-refline .p-slotcell > .drop { min-height: 180px; }
+  .p-meter { max-width: 420px; margin-top: 16px; }
+
+  .p-filed .ptabs { margin: 14px 0 16px; }
+  .p-filed .sheet { margin: 0; }
+  .p-filed .sheet .empty { padding: 30px 12px 34px; }
+  .p-page details.more { margin-top: 32px; }
+  .p-edit.card { margin: 0 0 12px; }
+
+  /* ---- motion: a print swings when you reach for it; off with reduced motion ---- */
+  @media (prefers-reduced-motion: no-preference) {
+    .p-link:hover .p-print, .p-link:focus-visible .p-print { animation: swing 0.9s ease-in-out; }
+  }
+
+  /* ---- desktop: bigger prints ---- */
+  @media (min-width: 1000px) {
+    .p-line { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); column-gap: 26px; row-gap: 26px; }
+    .p-cell::before { left: -13px; right: -13px; }
+    .p-name { font-size: 21px; }
+    .p-role { font-size: 22px; }
+    .p-refline { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); }
+    .p-refline .p-slotcell:not(.first) { grid-column: span 2; }
+  }
+
+  @media (max-width: 760px) {
+    .p-new-body { grid-template-columns: minmax(0, 1fr); }
+    .p-new-print { display: none; }
+    .p-how { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .p-head { grid-template-columns: 140px minmax(0, 1fr); grid-template-areas: "print info" "where where"; column-gap: 22px; }
+    .p-info { padding-top: 26px; gap: 6px; }
+    .p-filed-n { font-size: 21px; }
+    .p-portrait .p-role { font-size: 20px; margin-top: 6px; }
+  }
+  @media (max-width: 640px) {
+    /* phones: the dashed slot takes a row of its own, like "Hang your shots" */
+    .p-line .p-slotcell { grid-column: 1 / -1; }
+    .p-slotcell > :is(.p-slot, .drop), .p-refline .p-slotcell > .drop { min-height: 128px; }
+    .p-name { font-size: 17px; }
+    .p-role { font-size: 18px; }
+    .p-counts > span { font-size: 12px; letter-spacing: 0.12em; }
+    .p-sec-h h2 { font-size: 24px; }
+    .p-folder .btn { margin-left: 0; }
+    .p-refline { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); column-gap: 20px; }
+    .p-ref .print-tag { font-size: 19px; margin-top: 6px; }
+  }
+  @media (max-width: 380px) {
+    .p-line { column-gap: 16px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .p-cell::before { left: -8px; right: -8px; }
+    .p-head { grid-template-columns: 116px minmax(0, 1fr); column-gap: 16px; }
+    .p-x { right: -10px; }
+  }
+}

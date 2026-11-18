@@ -1,0 +1,273 @@
+/*
+  The darkroom's own parts (web/DESIGN.md): the grain, the safelight lamp and its glow, the white flash, the film
+  frames, pegs and the drying line, paper prints, the ticket with the QR, the red shutter and the round
+  controls beside it, the dialog card, and the camera's viewfinder bits. Imported by styles.css; the tokens live there.
+  Photos are never tinted: nothing here lays a colour over a picture.
+*/
+@layer components {
+  /* ---- over every page: the grain, behind the content (the photos keep their own) ---- */
+  .grain { position: fixed; inset: 0; pointer-events: none; z-index: -1; opacity: 0.5; background-image: var(--grain); }
+  /* a grain layer inside a part (absolute, for a panel that has its own background) */
+  .grain.in { position: absolute; z-index: 0; }
+
+  /* the safelight's glow from the top right corner of the red-lit room (put inside a positioned screen) */
+  .glow { position: absolute; left: 0; right: 0; top: 0; height: 100dvh; max-height: 100%; z-index: -1; pointer-events: none; background: radial-gradient(125% 62% at 90% 3%, rgba(255, 74, 54, 0.5) 0%, rgba(255, 74, 54, 0.2) 36%, rgba(255, 74, 54, 0) 72%); }
+  @media (min-width: 1000px) {
+    .glow { background: radial-gradient(95% 90% at 95% 0%, rgba(255, 74, 54, 0.5) 0%, rgba(255, 74, 54, 0.19) 38%, rgba(255, 74, 54, 0) 72%); }
+  }
+  /* a screen in the red-lit room: the page turns room-coloured (see the base rules) */
+  .room { position: relative; isolation: isolate; min-height: 100dvh; color: var(--light); }
+
+  /* the safelight lamp: a red bulb with its glow, top right */
+  .lamp { width: 28px; height: 28px; flex: 0 0 auto; border-radius: 50%; background: #2a1210; border: 1px solid #5a2c26; display: inline-flex; align-items: center; justify-content: center; }
+  .lamp i { width: 14px; height: 14px; border-radius: 50%; background: var(--red); box-shadow: 0 0 14px 4px rgba(255, 74, 54, 0.75), 0 0 60px 26px rgba(255, 74, 54, 0.38); }
+  @media (min-width: 1000px) {
+    .lamp { width: 32px; height: 32px; }
+    .lamp i { width: 16px; height: 16px; box-shadow: 0 0 16px 5px rgba(255, 74, 54, 0.75), 0 0 80px 34px rgba(255, 74, 54, 0.38); }
+  }
+  /* the wordmark beside it */
+  .wordmark { font: 700 22px/1 var(--cond); letter-spacing: 0.16em; text-transform: uppercase; color: var(--light); }
+  .orgname { font: 600 12px/1.2 var(--sans); letter-spacing: 0.1em; text-transform: uppercase; color: var(--light-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (min-width: 1000px) { .wordmark { font-size: 26px; } .orgname { font-size: 13px; } }
+
+  /* ---- the white flash of a shot ---- */
+  .flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 80; }
+  .flash.pop { animation: flashpop 0.9s ease-out; }
+  @keyframes flashpop { 0% { opacity: 0.92; } 100% { opacity: 0; } }
+
+  /* ---- a step heading: a red number and condensed capitals ("01 Pick the event") ---- */
+  .stephead { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 14px 0 0; }
+  .stephead h2 { display: flex; gap: 8px; margin: 0; font: 700 15px/20px var(--cond); letter-spacing: 0.16em; text-transform: uppercase; }
+  .stephead h2 b { color: var(--red-text); font-weight: 700; }
+  .stephead .hand { display: inline-flex; align-items: center; gap: 6px; font-size: 19px; line-height: 20px; color: var(--amber); transform: rotate(-3deg); white-space: nowrap; }
+  @media (min-width: 1000px) { .stephead h2 { gap: 10px; font-size: 17px; line-height: 24px; } .stephead .hand { font-size: 22px; line-height: 24px; } }
+
+  /* four frames of a roll in a row (an event's card in the console): photos, or unexposed film */
+  .film-frames { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 18px 8px; background: var(--film); }
+  .film-frames::before, .film-frames::after { content: ""; position: absolute; left: 0; right: 0; height: 7px; background: var(--holes); pointer-events: none; }
+  .film-frames::before { top: 5px; }
+  .film-frames::after { bottom: 5px; }
+  .film-frames img, .film-frames .blank { display: block; width: 100%; aspect-ratio: 3 / 2; object-fit: cover; border-radius: 2px; background: #2a1512; }
+
+  /* ---- the drying line, pegs, and paper prints hanging from it ---- */
+  .peg { position: absolute; left: 50%; top: 2px; z-index: 2; width: 10px; height: 26px; margin-left: -5px; border-radius: 2px; background: var(--peg); box-shadow: inset 0 -11px 0 var(--peg-d), 0 2px 4px rgba(0, 0, 0, 0.5); }
+  /* a paper print: a white border round the photo, a shadow under it (the photo inside keeps its colours) */
+  .print { display: block; width: 100%; padding: 6px; margin: 0; border: 0; border-radius: 2px; background: var(--paper); color: var(--paper-ink); box-shadow: 0 14px 26px rgba(0, 0, 0, 0.5); transform-origin: 50% 0; text-align: left; }
+  .print > img, .print > video, .print .pp { display: block; width: 100%; object-fit: cover; background: var(--paper-3); }
+  .print.lg { padding: 8px; box-shadow: 0 20px 34px rgba(0, 0, 0, 0.55); }
+  /* a print hanging from a peg: tilt it with --r (see tilt() in ui.tsx) */
+  .hang { position: relative; padding-top: 22px; }
+  .hang > .print, .hang > .sway { transform: rotate(var(--r, 0deg)); transform-origin: 50% 0; }
+  /* the line itself, behind a row of hanging prints */
+  .dryline { background: repeating-linear-gradient(180deg, transparent 0, transparent 13px, var(--string) 13px, var(--string) 15px, transparent 15px, transparent var(--row, 276px)); }
+  /* a handwritten tag under or on a print */
+  .print-tag { font: 700 20px/22px var(--hand); color: var(--amber); text-align: center; }
+  /* the select tick on a print: 44px to tap, a 26px disc to see, red with a check when on */
+  button.tick { position: absolute; right: -12px; top: -12px; z-index: 3; width: 44px; height: 44px; padding: 0; margin: 0; border: 0; background: transparent; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+  button.tick > i { width: 26px; height: 26px; border-radius: 50%; border: 2px solid rgba(244, 238, 227, 0.92); background: rgba(24, 21, 19, 0.6); color: var(--room); display: flex; align-items: center; justify-content: center; }
+  button.tick > i svg { display: none; }
+  button.tick[aria-pressed="true"] > i { background: var(--red); border-color: var(--red); }
+  button.tick[aria-pressed="true"] > i svg { display: block; }
+  /* a picked print or frame: a red outline round the paper */
+  .print.on, .on > .print, .on > .hang > .print { outline: 3px solid var(--red); outline-offset: 3px; }
+  /* a print still developing: an empty paper well, pulsing */
+  .print.dev .pp, .print .pp.dev { animation: develop-wait 2.6s ease-in-out infinite alternate; }
+
+  /* ---- the contact sheet header line (the sheet itself is .sheet in styles.css) ---- */
+  .sheet { padding: 12px 9px; border-radius: 3px; background: var(--paper); color: var(--ink); box-shadow: 0 16px 30px rgba(0, 0, 0, 0.5); }
+  .sheet-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 14px; margin: 0 3px 8px; font: 700 13px/16px var(--cond); letter-spacing: 0.12em; text-transform: uppercase; color: var(--ink); }
+  .sheet-head .muted, .sheet-head > span:last-child:not(:first-child) { color: var(--muted); }
+  .sheet-head .hand, .sheet-head .note-hand { font: 700 21px/24px var(--hand); letter-spacing: 0; text-transform: none; color: var(--pencil-ink); transform: rotate(-1.5deg); }
+  .sheet .more-row { margin-top: 12px; display: flex; justify-content: center; }
+  @media (min-width: 1000px) {
+    .sheet { padding: 18px 16px; border-radius: 4px; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5); }
+    .sheet-head { margin: 0 4px 12px; font-size: 15px; line-height: 20px; }
+    .sheet-head .hand, .sheet-head .note-hand { font-size: 25px; line-height: 26px; }
+  }
+  /* the frame number printed above each frame */
+  .fno { position: absolute; left: 5px; top: 2px; z-index: 1; display: flex; align-items: center; gap: 4px; font: 700 11px/13px var(--cond); letter-spacing: 0.12em; color: var(--amber); pointer-events: none; }
+  .fno::before { content: ""; width: 0; height: 0; border-left: 5px solid currentColor; border-top: 3px solid transparent; border-bottom: 3px solid transparent; }
+  @media (min-width: 1000px) { .mtile .fno { left: 7px; top: 3px; font-size: 12px; line-height: 14px; } }
+
+  /* ---- the ticket: the one permanent QR on a paper stub ---- */
+  .ticket { display: flex; align-items: stretch; border-radius: 6px; background: var(--paper); color: var(--paper-ink); box-shadow: 0 14px 26px rgba(0, 0, 0, 0.45); }
+  .ticket-qr { flex: 0 0 auto; padding: 12px; border-right: 2px dashed #b9ab9c; display: flex; align-items: center; }
+  .ticket-qr svg, .ticket-qr img { width: 92px; height: 92px; display: block; }
+  .ticket-tx { flex: 1 1 auto; min-width: 0; padding: 12px 14px; display: flex; flex-direction: column; justify-content: center; gap: 5px; }
+  .ticket-t { font: 800 20px/1 var(--cond); text-transform: uppercase; }
+  .ticket-d { font-size: 13px; line-height: 17px; color: var(--paper-muted); }
+  .ticket-l { font: 700 13px/16px var(--cond); letter-spacing: 0.08em; color: var(--paper-muted); overflow-wrap: anywhere; }
+  .ticket-a { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 3px; }
+
+  /* ---- the red shutter: a ring, a red disc with its glow, the word under it ---- */
+  .shutter { width: 104px; padding: 0; margin: 0; background: transparent; border: 0; color: var(--light); text-decoration: none; display: inline-flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+  .shutter > i { width: 76px; height: 76px; border-radius: 50%; border: 3px solid var(--light); display: flex; align-items: center; justify-content: center; }
+  .shutter > i::after { content: ""; width: 58px; height: 58px; border-radius: 50%; background: var(--red); box-shadow: 0 0 26px 2px rgba(255, 74, 54, 0.55); transition: transform 0.12s ease; }
+  .shutter:active > i::after { transform: scale(0.9); }
+  .shutter > span { font: 700 14px/15px var(--cond); letter-spacing: 0.14em; text-transform: uppercase; text-align: center; }
+  .shutter:disabled, .shutter.off { opacity: 0.4; cursor: default; pointer-events: none; }
+  .shutter.busy > i::after { animation: dr-pulse 0.9s ease-in-out infinite alternate; }
+  .shutter:focus-visible { outline-offset: 2px; border-radius: 12px; }
+  /* the round controls either side of it (Add photos, See all) */
+  .ctl { width: 104px; padding: 14px 0 0; margin: 0; background: transparent; border: 0; color: var(--light); text-decoration: none; display: flex; flex-direction: column; align-items: center; gap: 7px; cursor: pointer; }
+  .ctl > i { width: 48px; height: 48px; border-radius: 50%; border: 1.5px solid rgba(244, 238, 227, 0.6); display: flex; align-items: center; justify-content: center; }
+  .ctl > i svg { width: 22px; height: 22px; }
+  .ctl > span { font-size: 12px; font-weight: 500; line-height: 15px; color: var(--light-muted); text-align: center; }
+  .ctl:hover { color: var(--amber); }
+  .ctl.none { visibility: hidden; }
+  .ctl.off, .ctl:disabled, .ctl[aria-disabled="true"] { opacity: 0.4; pointer-events: none; }
+  .shutter-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin: 14px 0 4px; }
+  .shutter-row .side { flex: 1; display: flex; }
+  .shutter-row .side.right { justify-content: flex-end; }
+  .shutter-row .side.left { justify-content: flex-start; }
+  .shutter-label { text-align: center; font: 800 24px/1.1 var(--cond); text-transform: uppercase; margin: 4px 0 0; }
+  .shutter-label + p { text-align: center; }
+  @media (max-width: 999px) and (max-height: 760px) {
+    .shutter > i { width: 68px; height: 68px; }
+    .shutter > i::after { width: 52px; height: 52px; }
+    .ctl { padding-top: 10px; }
+  }
+  /* the consent line under the buttons, with its lock */
+  .privacy { display: flex; align-items: flex-start; justify-content: center; gap: 6px; margin: 12px 0 0; font-size: 12px; line-height: 16px; color: var(--light-muted); text-align: center; }
+  .privacy svg { flex: 0 0 auto; margin-top: 1px; }
+
+  /* ---- a dialog of the darkroom: a paper card over a dark veil ---- */
+  .modal { position: fixed; inset: 0; z-index: 30; padding: 20px; background: rgba(12, 7, 6, 0.9); display: flex; align-items: center; justify-content: center; overflow-y: auto; animation: fadein 0.18s ease-out; }
+  .modal-card { width: 100%; max-width: 420px; margin: auto; padding: 20px; border-radius: var(--r); background: var(--paper); color: var(--paper-ink); box-shadow: var(--shadow-lg); display: grid; gap: 12px; }
+  .modal-card h2 { margin: 0; font: 800 30px/1 var(--cond); text-transform: uppercase; }
+  .modal-card p { margin: 0; font-size: 15px; line-height: 1.4; }
+  .modal-card .small { font-size: 13px; color: var(--paper-muted); }
+  .modal-card label { margin: 0; display: grid; gap: 6px; }
+  .modal-card .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .modal-card .row > * { flex: 0 0 auto; min-width: 0; }
+  .modal-card .prog { font: 700 20px var(--cond); letter-spacing: 0.04em; }
+  .modal-card .meter { background: #d9ccba; }
+
+  /* ---- the selfie camera's viewfinder bits ---- */
+  /* viewfinder corners: four L brackets inside a box */
+  .vf { position: absolute; inset: 14px; pointer-events: none; z-index: 2; opacity: 0.7; background-repeat: no-repeat;
+    --vc: var(--light); --vl: 26px;
+    background-image: linear-gradient(var(--vc), var(--vc)), linear-gradient(var(--vc), var(--vc)), linear-gradient(var(--vc), var(--vc)), linear-gradient(var(--vc), var(--vc)), linear-gradient(var(--vc), var(--vc)), linear-gradient(var(--vc), var(--vc)), linear-gradient(var(--vc), var(--vc)), linear-gradient(var(--vc), var(--vc));
+    background-position: 0 0, 0 0, 100% 0, 100% 0, 0 100%, 0 100%, 100% 100%, 100% 100%;
+    background-size: var(--vl) 2px, 2px var(--vl), var(--vl) 2px, 2px var(--vl), var(--vl) 2px, 2px var(--vl), var(--vl) 2px, 2px var(--vl); }
+  .vf.amber { --vc: var(--amber); opacity: 0.95; }
+  .vf.tight { inset: 8px; --vl: 18px; }
+  .vf-cross { position: absolute; left: 50%; top: 50%; width: 22px; height: 22px; margin: -11px 0 0 -11px; pointer-events: none; z-index: 2; opacity: 0.55;
+    background: linear-gradient(var(--light), var(--light)) center / 2px 100% no-repeat, linear-gradient(var(--light), var(--light)) center / 100% 2px no-repeat; }
+
+  /* the camera's data strip, now a line of edge print: what is on the left, a red dot and the state on the right */
+  .hud { display: flex; justify-content: space-between; align-items: center; gap: 12px; font: 700 12px/1.3 var(--cond); letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  .hud b { font-weight: 700; color: var(--edge); display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+  .hud .rec::before, .rec-dot::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--red); box-shadow: 0 0 10px var(--red); animation: blink 1.2s steps(1) infinite; }
+  .hud.over { position: absolute; left: 20px; right: 20px; z-index: 3; pointer-events: none; color: var(--light); }
+  /* over a live picture the labels sit on small film plates, so they read on a bright face or a white wall */
+  .hud.over .exp, .hud.over b { padding: 3px 8px; border-radius: 3px; background: var(--film); }
+  .hud.over.at-top { top: 22px; }
+  .hud.over.at-bottom { bottom: 22px; }
+  .hud .exp { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+  /* the oval guide and a focus box that locks on a face */
+  .finder-guide ellipse { fill: none; stroke: var(--light); stroke-opacity: 0.85; stroke-width: 2; stroke-dasharray: 6 6; vector-effect: non-scaling-stroke; }
+  .focus-box { position: absolute; left: 27%; top: 18%; width: 46%; height: 58%; pointer-events: none; z-index: 2; background-repeat: no-repeat; transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.3, 1.2), opacity 0.4s; transform: scale(1.18); opacity: 0.55;
+    --fc: var(--amber);
+    background-image: linear-gradient(var(--fc), var(--fc)), linear-gradient(var(--fc), var(--fc)), linear-gradient(var(--fc), var(--fc)), linear-gradient(var(--fc), var(--fc)), linear-gradient(var(--fc), var(--fc)), linear-gradient(var(--fc), var(--fc)), linear-gradient(var(--fc), var(--fc)), linear-gradient(var(--fc), var(--fc));
+    background-position: 0 0, 0 0, 100% 0, 100% 0, 0 100%, 0 100%, 100% 100%, 100% 100%;
+    background-size: 22px 2px, 2px 22px, 22px 2px, 2px 22px, 22px 2px, 2px 22px, 22px 2px, 2px 22px; }
+  .focus-box.locked { transform: scale(1); opacity: 1; animation: lock 0.5s steps(2) 1; }
+  @keyframes lock { 50% { opacity: 0.3; } }
+  /* the iris snaps shut and opens again as the shutter fires */
+  .cam .iris { position: absolute; left: 50%; top: 50%; z-index: 5; width: 170%; aspect-ratio: 1; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 0 100vmax #050403; pointer-events: none; opacity: 0; }
+  .cam .iris.snap { animation: snap 0.5s cubic-bezier(0.6, 0, 0.3, 1); }
+  @keyframes snap { 0% { width: 170%; opacity: 1; } 38% { width: 0%; opacity: 1; } 100% { width: 170%; opacity: 1; } }
+  .viewer .stage .vf { inset: 10px; opacity: 0.35; }
+
+  /* ---- a Polaroid: a print with a wide bottom edge, a strip of tape, and a handwritten caption ---- */
+  .polaroid { position: relative; display: block; background: var(--paper); padding: 12px 12px 18px; box-shadow: 0 24px 50px rgba(0, 0, 0, 0.6); transform: rotate(2.2deg); transition: transform 0.3s; color: var(--paper-ink); }
+  .polaroid:hover { transform: rotate(0); }
+  .polaroid.left { transform: rotate(-2.4deg); }
+  .polaroid .tape { position: absolute; top: -13px; left: 50%; width: 84px; height: 26px; margin-left: -42px; background: rgba(230, 217, 200, 0.75); transform: rotate(-4deg); }
+  .polaroid .photo { position: relative; aspect-ratio: 1; overflow: hidden; background: var(--paper-3); }
+  .polaroid .photo > img { width: 100%; height: 100%; object-fit: cover; display: block; animation: develop 0.9s ease-out both; }
+  .polaroid .cap { font: 700 25px/1.1 var(--hand); color: var(--paper-ink); text-align: center; margin: 12px 0 0; }
+
+  /* ---- a counter of frames, like the window on the top of a film camera ---- */
+  .counter-window { display: inline-flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 12px; border-radius: 3px; background: var(--film); border: 1px solid var(--film-edge); font: 700 13px var(--cond); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .counter-window b { font-weight: 800; color: var(--amber); font-variant-numeric: tabular-nums; }
+
+  /* ---- "developing…": a handwritten line while the selfie is searched ---- */
+  .developing { display: grid; justify-items: center; gap: 12px; text-align: center; }
+  .developing .leader { position: relative; width: 120px; height: 120px; border-radius: 50%; display: grid; place-items: center; color: var(--amber); background: rgba(23, 10, 9, 0.75); }
+  .developing .leader svg { position: absolute; inset: 0; width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.5; opacity: 0.55; }
+  .developing .leader .sweep { position: absolute; inset: 4%; border-radius: 50%; background: conic-gradient(from 0deg, transparent 0 70%, rgba(255, 74, 54, 0.45) 100%); animation: spin 1s linear infinite; }
+  .developing .leader i { position: relative; font: 800 44px/1 var(--cond); font-style: normal; }
+  .developing .phase { font: 700 24px/1.1 var(--hand); letter-spacing: 0; text-transform: none; color: var(--amber); }
+
+  /* ---- a scrolling line of film edge print ---- */
+  .ticker { position: relative; overflow: hidden; white-space: nowrap; padding-block: 18px; background: var(--film); border-top: 1px solid var(--film-edge); border-bottom: 1px solid var(--film-edge); }
+  .ticker::before, .ticker::after { content: ""; position: absolute; left: 0; right: 0; height: 7px; background: var(--holes); }
+  .ticker::before { top: 5px; }
+  .ticker::after { bottom: 5px; }
+  .ticker > div { display: inline-block; animation: marquee 32s linear infinite; font: 700 13px var(--cond); letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber); }
+  .ticker em { font-style: normal; margin-inline: 14px; color: var(--light-muted); }
+  @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+  /* ---- three steps as frames: 01 · 02 · 03, the number in red ---- */
+  .frames3 { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .frames3 li { position: relative; padding: 12px; background: var(--panel); border-radius: var(--r); color: var(--light); }
+  .frames3 li i { display: block; font: 800 15px var(--cond); letter-spacing: 0.14em; color: var(--red-text); font-style: normal; margin-bottom: 4px; }
+  .frames3 li b { display: block; font: 800 19px/1.05 var(--cond); text-transform: uppercase; }
+  .frames3 li span { display: block; font-size: 13px; color: var(--light-muted); margin-top: 4px; }
+
+  /* the sign-in page of the console: a paper card under the safelight */
+  .darkslide { position: relative; overflow: hidden; }
+  .darkslide .vf { inset: 10px; }
+
+  /* ---- motion: prints sway on the line and swing when touched; all of it stops with reduced motion ---- */
+  @keyframes sway { 0%, 100% { transform: rotate(1.5deg); } 50% { transform: rotate(-1.2deg); } }
+  @keyframes swing { 0% { transform: rotate(0); } 30% { transform: rotate(-2.2deg); } 65% { transform: rotate(1.4deg); } 100% { transform: rotate(0); } }
+  /* a print fading in: opacity only, short, and it ends on the photo's true colours */
+  @keyframes devin { from { opacity: 0.08; } to { opacity: 1; } }
+  @keyframes develop-wait { from { opacity: 0.2; } to { opacity: 0.62; } }
+  @keyframes dr-pulse { from { opacity: 0.35; } to { opacity: 0.85; } }
+  @media (prefers-reduced-motion: no-preference) {
+    .sway { animation: sway 5.5s ease-in-out infinite; transform-origin: 50% 0; }
+    .sway:hover, .sway:focus-within, .sway.still { animation: none; }
+    .print.swing:hover { animation: swing 0.9s ease-in-out; }
+    .devin { animation: devin 0.9s ease-out both; animation-delay: var(--d, 0ms); }
+  }
+
+  @media (max-width: 560px) {
+    .hud.over { left: 14px; right: 14px; }
+    .hud.over.at-top { top: 16px; }
+    .hud.over.at-bottom { bottom: 16px; }
+    .hud .hide-sm { display: none; }
+    .frames3 li b { font-size: 16px; }
+    .frames3 li span { display: none; }
+  }
+
+  /* an album image whose copy is being prepared in OneDrive (or OneDrive is slow): a quiet unexposed frame with a
+     slow brightness pulse, asked for again by itself. Brightness only: no colour is laid over anything. */
+  img.is-preparing { visibility: hidden; }
+  .mtile:has(> img.is-preparing), .frames:has(> img.is-preparing), .cover:has(> img.is-preparing), .vw-print:has(> img.is-preparing) { position: relative; }
+  .mtile:has(> img.is-preparing)::after, .cover:has(> img.is-preparing)::after, .vw-print:has(> img.is-preparing)::after {
+    content: 'Being prepared';
+    position: absolute;
+    inset: 16px 3px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #241a17;
+    color: var(--light-muted);
+    font: 700 11px/1.2 var(--cond);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    animation: preparing 2.4s ease-in-out infinite;
+    pointer-events: none;
+  }
+  .cover:has(> img.is-preparing)::after, .vw-print:has(> img.is-preparing)::after { inset: 0; }
+  @keyframes preparing { 0%, 100% { filter: brightness(0.85); } 50% { filter: brightness(1.15); } }
+  @media (prefers-reduced-motion: reduce) { .mtile:has(> img.is-preparing)::after, .cover:has(> img.is-preparing)::after, .vw-print:has(> img.is-preparing)::after { animation: none; } }
+
+  /* the album says so when OneDrive is not giving photos for a moment */
+  .images-down { margin: 0 auto 12px; max-width: 760px; padding: 10px 14px; border: 1px solid color-mix(in srgb, var(--light) 30%, transparent); border-radius: 6px; color: var(--light); font-size: 14px; line-height: 1.4; }
+}
