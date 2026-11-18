@@ -101,6 +101,11 @@ describe('the live Mac: every copy missing', () => {
     const waitFor = album.find((p: any) => p.id === before.find((m) => m.name === '2 red blue.jpg').id);
     const res = await request(h.app).get(waitFor.thumb).redirects(0).expect(503);
     expect(res.body.error).toBe('copy_preparing');
+    // The newest photo: without "a student waits for it" it would be made last (oldest first).
+    await h.ctx.db.query(`update media set taken_at = case when id = $2 then now() else now() - interval '1 day' end where event_id = $1`, [
+      event.id,
+      waitFor.id,
+    ]);
 
     const spy = spyReads();
     let out;
@@ -110,7 +115,10 @@ describe('the live Mac: every copy missing', () => {
       spy.restore();
     }
     expect(out).toMatchObject({ done: 5, lost: 0, failed: 0, stopped: null });
-    expect(spy.seen[0]).toBe(before.find((m) => m.id === waitFor.id).onedrive_item_id); // the one a student waits for, first
+    // The one a student waits for starts first. Copies are made REBUILD_AT_ONCE at a time (2), so it reads its original
+    // in the first pair: the other one, started with it, may read a moment sooner.
+    const firstReads = [...new Set(spy.seen)].slice(0, h.ctx.cfg.rebuildAtOnce);
+    expect(firstReads).toContain(before.find((m) => m.id === waitFor.id).onedrive_item_id);
     await settle(h);
 
     for (const m of await rows(event.id)) {
