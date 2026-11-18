@@ -425,3 +425,7 @@ Everything for the server is in `deploy/` (Docker Compose: the app, PostgreSQL 1
 Caddy gets the HTTPS certificate by itself. Photos and videos stay in OneDrive; the server keeps the database,
 Redis, temp files and the small view cache. QR codes, share links and emails all use `PUBLIC_URL`, so print new QR
 codes from the organiser page after the move. Organisers sign in again once on the new address.
+
+Health check: `GET /healthz` answers 200 `{"ok":true}` when PostgreSQL and Redis both answer, and 503 naming the one
+that does not (for example `{"ok":false,"failed":["redis"]}`), within about 2 seconds. Docker's health check uses it,
+and so can outside monitoring: it needs no sign-in and shows nothing else.

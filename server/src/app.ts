@@ -30,6 +30,18 @@ export function createApp(ctx: Ctx, opts: { webDir?: string } = {}): express.Exp
     next();
   });
 
+  // For the Docker health check and outside monitoring: 200 when PostgreSQL and Redis both answer, 503 naming the one
+  // that does not. No sign-in. It comes before the web app, whose catch-all would answer it with the page and 200.
+  app.get('/healthz', (_req, res, next) => {
+    failedHealthChecks(ctx)
+      .then((failed) => {
+        res.setHeader('Cache-Control', 'no-store');
+        if (failed.length) res.status(503).json({ ok: false, failed });
+        else res.json({ ok: true });
+      })
+      .catch(next);
+  });
+
   app.use('/api', express.json({ limit: '200kb' }));
   app.use('/api/admin', adminRoutes(ctx));
   app.use('/api', publicRoutes(ctx));
@@ -52,4 +64,41 @@ export function createApp(ctx: Ctx, opts: { webDir?: string } = {}): express.Exp
 
   app.use(errorHandler(ctx.log));
   return app;
+}
+
+/** How long /healthz waits for each dependency. They are asked side by side, well inside Docker's 5-second limit. */
+const HEALTH_TIMEOUT_MS = 2000;
+
+/** What /healthz asks of each dependency, under the name it reports when that one fails. */
+const HEALTH_CHECKS: [name: string, check: (ctx: Ctx) => Promise<unknown>][] = [
+  ['database', (ctx) => ctx.db.query('select 1')],
+  ['redis', (ctx) => ctx.redis.ping()],
+];
+
+/**
+ * The dependencies that failed or did not answer in time; none when all is well. When a server hangs (it takes the
+ * connection and never replies), Knex waits a minute for a connection and ioredis waits with no end, hence the limit.
+ * Why one failed goes to the log only, never into the answer.
+ */
+async function failedHealthChecks(ctx: Ctx): Promise<string[]> {
+  const failed = await Promise.all(
+    HEALTH_CHECKS.map(async ([name, check]) => {
+      let timer: NodeJS.Timeout | undefined;
+      try {
+        await Promise.race([
+          check(ctx),
+          new Promise<never>((_ok, no) => {
+            timer = setTimeout(() => no(new Error(`no answer in ${HEALTH_TIMEOUT_MS / 1000} seconds`)), HEALTH_TIMEOUT_MS);
+          }),
+        ]);
+        return [];
+      } catch (e) {
+        ctx.log(`health check: ${name} failed: ${(e as Error).message}`);
+        return [name];
+      } finally {
+        clearTimeout(timer);
+      }
+    }),
+  );
+  return failed.flat();
 }
