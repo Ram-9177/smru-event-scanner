@@ -156,9 +156,13 @@ export interface Config {
     everyMin: number;
     /** The morning summary is sent from this hour, server time (ALERT_DIGEST_HOUR, 0-23; -1 = no summary). */
     digestHour: number;
-    /** Free disk below this many bytes: a warning (ALERT_DISK_WARN_GB, default 5: the server keeps only the database, backups, the photo cache and temp files). */
+    /**
+     * Free space on the server below this many bytes: a warning in the console (ALERT_DISK_WARN_GB). 0, the default, is
+     * off: the server holds only backups, a photo cache and uploads on their way to OneDrive, so the console says
+     * nothing about its disk until uploads have to stop (below uploadMinFreeBytes).
+     */
     diskWarnBytes: number;
-    /** Free disk below this many bytes: critical (ALERT_DISK_CRITICAL_GB, default 2). */
+    /** Free space below this many bytes: critical (ALERT_DISK_CRITICAL_GB; 0, the default, is off). */
     diskCriticalBytes: number;
     /** The newest backup older than this many hours: an alert (ALERT_BACKUP_MAX_AGE_HOURS, default 48). */
     backupMaxAgeHours: number;
@@ -300,8 +304,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, overrides: Part
     alerts: {
       everyMin: Math.max(1, num(env.ALERTS_EVERY_MIN, 5)),
       digestHour: Math.min(23, Math.max(-1, Math.floor(num(env.ALERT_DIGEST_HOUR, 9)))),
-      diskWarnBytes: gb(env.ALERT_DISK_WARN_GB, 5),
-      diskCriticalBytes: gb(env.ALERT_DISK_CRITICAL_GB, 2),
+      diskWarnBytes: gb(env.ALERT_DISK_WARN_GB, 0),
+      diskCriticalBytes: gb(env.ALERT_DISK_CRITICAL_GB, 0),
       backupMaxAgeHours: Math.max(1, num(env.ALERT_BACKUP_MAX_AGE_HOURS, 48)),
       expiryWarnDays: Math.max(1, num(env.ALERT_EXPIRY_DAYS, 14)),
     },

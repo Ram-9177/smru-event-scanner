@@ -155,8 +155,8 @@ npm run service uninstall    # stop it and do not start it at login any more
 
 - **Alerts.** Every 5 minutes the server checks for problems: sync failing for an event (two runs in a row),
   OneDrive needing to be connected again, the OneDrive client secret or sign-in running out within 14 days, the
-  database backup failing or older than 2 days, less than 5 GB free on the Mac (critical below 2 GB: it only keeps
-  the database, backups and temp files), face recognition not running, OneDrive nearly full (under 10%; critical under
+  database backup failing or older than 2 days, uploads paused because the server is out of space (to be warned
+  earlier, set `ALERT_DISK_WARN_GB` and `ALERT_DISK_CRITICAL_GB`), face recognition not running, OneDrive nearly full (under 10%; critical under
   3% or 5 GB), OneDrive not giving the album's photos for 5 minutes, more than 50 photos waiting over 30 minutes for
   their copies, and photos whose copies cannot be made because their originals are gone. Each problem shows as a banner across the console: super admins see them all,
   organisers see sync and face-recognition problems.
@@ -166,10 +166,12 @@ npm run service uninstall    # stop it and do not start it at login any more
   **Send a test email** checks the setup. Put the client secret's end date from Entra in
   `MS_CLIENT_SECRET_EXPIRES=YYYY-MM-DD` to be warned before it runs out. The numbers can be changed in
   `server/.env` (see `.env.example`, "alerts").
-- **Storage.** Settings, Alerts and storage shows this Mac (free space, the database, backups, temporary files) and
-  OneDrive (its space, the app's copies, copies being rebuilt, photos that cannot be shown). Below 1 GB free for
-  temporary files, uploads from students and organisers are refused with a clear message until space is freed
-  (`TEMP_MIN_FREE_GB`; the older `UPLOAD_MIN_FREE_GB` still works); a video needs about 2.3 times its size on top.
+- **Storage.** Settings, Alerts and storage shows three parts, each of which can be on its own account: the database
+  (its size and backups), the server by its address (temporary files and the photo cache: nothing else of its disk)
+  and Microsoft OneDrive (its space, the app's copies, copies being rebuilt, photos that cannot be shown). Below 1 GB
+  free for temporary files, uploads from students and organisers are refused with a clear message until space is
+  freed, and the console says so (`TEMP_MIN_FREE_GB`; the older `UPLOAD_MIN_FREE_GB` still works); a video needs
+  about 2.3 times its size on top.
 - **Keep me updated.** After a selfie search a student can tick "Tell me when new photos of me arrive". Only then
   is a code made from their face kept (never the selfie), for that event only. New photos from syncs and approved
   uploads are checked against it, and sure matches are added to their prints. They get a notification if they allow
@@ -195,20 +197,21 @@ The server runs the app and keeps the database; every photo and video byte is in
   copies), and `people-refs` (People face photos). Every copy gets a new name when it is made (never replaced in
   place, so OneDrive keeps no extra versions), and copies that are no longer needed are deleted for good
   (`permanentDelete`, so they do not fill the recycle bin and the quota).
-- **This Mac** keeps the PostgreSQL database (settings, face data), its backups, logs and keys, and temporary files
-  that live for one job or one download (removed afterwards, swept at start and every hour).
+- **The server** keeps (or reaches, on its own account) the PostgreSQL database (settings, face data), its backups,
+  logs and keys, a small photo cache (`IMG_CACHE_MB`, 300 MB), and temporary files that live for one job or one
+  download (removed afterwards, swept at start and every hour).
 - **How the album gets them.** Every image link is still signed by the app and checked (the photo must be visible to
   that student) before anything else; then the phone is sent to a short-lived OneDrive link for the copy. Share and
   save in the viewer, and Save original and Download all, go through the app (their place is taken out here, and
   their links never leave the server). Set `VIDEO_VIA=pipe` if videos do not play from OneDrive on iPhones.
 - **The copies job.** Missing copies are made again from the originals by themselves: 30 seconds after start, every
   10 minutes, after each sync, and at once when a student is waiting for one ("being prepared"). Two at a time,
-  at most `REBUILD_PER_MIN` (60) a minute, live events first. Copies an older version kept on the Mac
+  at most `REBUILD_PER_MIN` (60) a minute, live events first. Copies an older version kept on the server
   (`server/data/media`) are moved up as they are and then removed. A photo whose original is gone in a closed event
   cannot be rebuilt: it leaves the album and the Media manager lists it under "Cannot be shown" with Try again.
 - **Do not edit the copies folder.** Deleting files there only makes the app make them again. If the OneDrive app on
-  this Mac syncs the Event Photos folder, set `_app copies (do not edit)` to "Free up space" (online only) or leave it
-  out of the sync, or the copies come back down onto the Mac.
+  a computer syncs the Event Photos folder, set `_app copies (do not edit)` to "Free up space" (online only) or leave
+  it out of the sync, or the copies come back down onto that computer.
 - **Check everything** (Settings, OneDrive) also checks the copies folder and that OneDrive's download links answer a
   byte range (video seeking) and what type they send.
 
@@ -316,7 +319,7 @@ NODE_ENV=production npm start      # serves the web app and the API on PORT; the
   `BACKUP_DIR=off` switches it off. pg_dump is looked for where Homebrew, Postgres.app and Linux packages put it;
   set `PG_DUMP` to its path if it is elsewhere. Restore with `pg_restore --clean --if-exists -d event_photos <file>`.
   Copy the folder off the server now and then. Redis holds only short-lived things (sign-in limits, signed-out
-  tokens, one-time links, cached OneDrive links). No photo or video is kept on this Mac; the app rebuilds its OneDrive
+  tokens, one-time links, cached OneDrive links). No photo or video is kept on the server; the app rebuilds its OneDrive
   copies from the originals when they are missing.
 - Organisers are added, given a new password and removed under **Settings > Team** by a super admin; a new organiser
   gets an email with a link to choose their own password. **Forgot password?** on the sign-in page emails a one-time

@@ -22,7 +22,7 @@ export type AlertKind =
   | 'onedrive_signin' // the stored Microsoft sign-in was last renewed more than 90 - expiryWarnDays days ago
   | 'backup_failed' // the last backup try failed
   | 'backup_old' // the newest backup is older than cfg.alerts.backupMaxAgeHours
-  | 'disk_low' // free disk below cfg.alerts.diskWarnBytes (critical below diskCriticalBytes)
+  | 'disk_low' // uploads paused for want of room on the server (earlier when ALERT_DISK_WARN_GB / _CRITICAL_GB are set)
   | 'face_down' // the face engine does not answer
   | 'copies_rebuilding' // more than 50 photos and videos have waited over 30 minutes for their copies in OneDrive
   | 'copies_lost' // one event: photos whose copies cannot be made (their originals are gone from OneDrive)
@@ -236,24 +236,29 @@ const CHECKS: Check[] = [
   {
     kinds: ['disk_low'],
     async run(ctx) {
+      // Photos and videos are in OneDrive; the server's disk holds only backups, a photo cache and every upload on its
+      // way there. So the console says nothing about it until uploads have to stop, unless ALERT_DISK_WARN_GB or
+      // ALERT_DISK_CRITICAL_GB ask to be told earlier.
       const { free } = await diskSpace(ctx.cfg);
+      if (!Number.isFinite(free)) return [];
       const { diskWarnBytes, diskCriticalBytes } = ctx.cfg.alerts;
-      if (!Number.isFinite(free) || free >= diskWarnBytes) return [];
+      const paused = free < ctx.cfg.uploadMinFreeBytes;
+      const critical = paused || free < diskCriticalBytes;
+      if (!critical && free >= diskWarnBytes) return [];
       const stop = gbLimit(ctx.cfg.uploadMinFreeBytes);
-      const critical = free < diskCriticalBytes;
-      // Photos and videos are in OneDrive; this disk holds the database, backups, the photo cache and every upload on
-      // its way there. A Mac gets its space back by cleaning up; a server more often needs a bigger disk.
+      // A Mac gets its space back by cleaning up; a server more often needs a bigger disk.
       const fix = ctx.cfg.machine === 'Mac' ? 'Free up space on the Mac.' : 'Give the server a bigger disk, or free up space on it.';
       return [
         {
           key: 'disk_low',
           kind: 'disk_low',
           severity: critical ? 'critical' : 'warn',
-          title: critical ? `The server is nearly full: ${gbText(free)} GB free` : `Only ${gbText(free)} GB free on the server`,
-          detail:
-            free < ctx.cfg.uploadMinFreeBytes
-              ? `Uploads are paused until there is at least ${stop} GB free. ${fix}`
-              : `${fix} Uploads stop below ${stop} GB.`,
+          title: paused
+            ? 'Uploads are paused: the server is out of space'
+            : critical
+              ? `The server is nearly full: ${gbText(free)} GB free`
+              : `Only ${gbText(free)} GB free on the server`,
+          detail: paused ? `Uploads start again once there is at least ${stop} GB free. ${fix}` : `${fix} Uploads stop below ${stop} GB.`,
           eventId: null,
         },
       ];

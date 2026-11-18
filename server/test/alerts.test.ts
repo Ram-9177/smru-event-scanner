@@ -114,31 +114,24 @@ describe('face recognition down', () => {
 });
 
 describe('disk space', () => {
-  it('warns below 5 GB and is critical below 2 GB (this Mac keeps only the database, backups and temp files); only super admins see it', async () => {
-    free = 8.04 * GB;
-    await checkAlerts(h.ctx, at(13 * HOUR));
-    expect(await active()).toEqual([]);
+  it('says nothing about the server\'s disk while uploads go (photos are in OneDrive); once they are paused, a critical alert for super admins only', async () => {
     free = 4.04 * GB;
     await checkAlerts(h.ctx, at(13 * HOUR));
-    let [row] = await active();
-    expect(row).toMatchObject({ key: 'disk_low', severity: 'warn', title: 'Only 4.0 GB free on the server', detail: 'Free up space on the Mac. Uploads stop below 1 GB.' });
-    expect(mailsAbout('Event Photos: Only 4.0 GB free on the server')).toHaveLength(1);
-
-    free = 1.6 * GB;
+    expect(await active()).toEqual([]);
+    free = 1.6 * GB; // nearly full, but uploads still go
     await checkAlerts(h.ctx, at(30_000));
-    [row] = await active();
-    expect(row).toMatchObject({ key: 'disk_low', severity: 'critical', title: 'The server is nearly full: 1.6 GB free', detail: 'Free up space on the Mac. Uploads stop below 1 GB.' });
+    expect(await active()).toEqual([]);
 
     free = 0.6 * GB;
-    await checkAlerts(h.ctx, at(60_000));
-    [row] = await active();
+    await checkAlerts(h.ctx, at(30_000));
+    const [row] = await active();
     expect(row).toMatchObject({
       key: 'disk_low',
       severity: 'critical',
-      title: 'The server is nearly full: 0.6 GB free',
-      detail: 'Uploads are paused until there is at least 1 GB free. Free up space on the Mac.',
+      title: 'Uploads are paused: the server is out of space',
+      detail: 'Uploads start again once there is at least 1 GB free. Free up space on the Mac.',
     });
-    expect(h.mail).toHaveLength(1); // the same problem: no new email within 12 hours
+    expect(mailsAbout('Event Photos: Uploads are paused: the server is out of space')).toHaveLength(1);
 
     const alert = (await h.admin.get('/api/admin/alerts').expect(200)).body.alerts[0];
     expect(alert.action).toEqual({ label: 'See storage', to: '/admin/settings?tab=alerts' });
@@ -147,25 +140,45 @@ describe('disk space', () => {
     free = 40 * GB;
     await checkAlerts(h.ctx, at(60_000));
     expect(await active()).toEqual([]);
-    expect(mailsAbout('Fixed: The server is nearly full: 0.6 GB free')).toHaveLength(1);
+    expect(mailsAbout('Fixed: Uploads are paused: the server is out of space')).toHaveLength(1);
   });
 
-  it('on a server (not a Mac) it advises a bigger disk: photos are in OneDrive, this disk holds the database and uploads on their way', async () => {
+  it('ALERT_DISK_WARN_GB and ALERT_DISK_CRITICAL_GB ask to be told earlier', async () => {
+    h.ctx.cfg.alerts.diskWarnBytes = 5 * GB;
+    h.ctx.cfg.alerts.diskCriticalBytes = 2 * GB;
+    try {
+      free = 4.04 * GB;
+      await checkAlerts(h.ctx, at(13 * HOUR));
+      let [row] = await active();
+      expect(row).toMatchObject({ key: 'disk_low', severity: 'warn', title: 'Only 4.0 GB free on the server', detail: 'Free up space on the Mac. Uploads stop below 1 GB.' });
+      free = 1.6 * GB;
+      await checkAlerts(h.ctx, at(30_000));
+      [row] = await active();
+      expect(row).toMatchObject({ key: 'disk_low', severity: 'critical', title: 'The server is nearly full: 1.6 GB free', detail: 'Free up space on the Mac. Uploads stop below 1 GB.' });
+    } finally {
+      h.ctx.cfg.alerts.diskWarnBytes = 0;
+      h.ctx.cfg.alerts.diskCriticalBytes = 0;
+      free = 40 * GB;
+    }
+    await checkAlerts(h.ctx, at(60_000));
+    expect(await active()).toEqual([]);
+  });
+
+  it('on a server (not a Mac): says nothing at 1.9 GB free, and once uploads are paused advises a bigger disk', async () => {
     h.ctx.cfg.machine = 'server';
     try {
-      free = 1.9 * GB;
+      free = 1.9 * GB; // as on the live server: little room, but uploads go
       await checkAlerts(h.ctx, at(60_000));
-      let [row] = await active();
+      expect(await active()).toEqual([]);
+      free = 0.6 * GB;
+      await checkAlerts(h.ctx, at(60_000));
+      const [row] = await active();
       expect(row).toMatchObject({
         key: 'disk_low',
         severity: 'critical',
-        title: 'The server is nearly full: 1.9 GB free',
-        detail: 'Give the server a bigger disk, or free up space on it. Uploads stop below 1 GB.',
+        title: 'Uploads are paused: the server is out of space',
+        detail: 'Uploads start again once there is at least 1 GB free. Give the server a bigger disk, or free up space on it.',
       });
-      free = 0.6 * GB;
-      await checkAlerts(h.ctx, at(60_000));
-      [row] = await active();
-      expect(row.detail).toBe('Uploads are paused until there is at least 1 GB free. Give the server a bigger disk, or free up space on it.');
       free = 40 * GB;
       await checkAlerts(h.ctx, at(60_000));
       expect(await active()).toEqual([]);

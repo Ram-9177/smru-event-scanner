@@ -74,25 +74,35 @@ describe('the alerts banner', () => {
   });
 });
 
+const MB = 1024 ** 2;
+
+/** A storage report: the database, the server and OneDrive, each its own part (`over` replaces fields in each). */
+const storage = (over: { machine?: string; host?: string; database?: object; server?: object; onedrive?: object; copies?: object } = {}) => {
+  const base = {
+    machine: 'Mac',
+    host: 'galleried-warless-petronila.ngrok-free.dev',
+    database: { size: 80 * MB, backups: 300 * MB, backups_on: true },
+    server: { temp: 0, cache: 120 * MB, cache_max: 300 * MB, legacy_copies: 0, uploads_paused: false, min_free_upload: 1 * GB },
+    onedrive: { connected: true, quota: { total: 1024 * GB, used: 256 * GB, remaining: 768 * GB }, copies: 14.5 * GB },
+    copies: { waiting: 0, lost: 0, running: false, last_error: null, local_done: true },
+  };
+  return {
+    body: {
+      ...base,
+      ...over,
+      database: { ...base.database, ...over.database },
+      server: { ...base.server, ...over.server },
+      onedrive: { ...base.onedrive, ...over.onedrive },
+      copies: { ...base.copies, ...over.copies },
+    },
+  };
+};
+
 const alertsTab = (over: Record<string, unknown> = {}) => ({
   ...base,
   'GET /admin/alerts': { body: { alerts: [] } },
   'GET /admin/alerts/settings': { body: { smtp: true, email_alerts: true, email: me.user.email, digest_hour: 9 } },
-  'GET /admin/storage': {
-    body: {
-      machine: 'Mac',
-      host: 'galleried-warless-petronila.ngrok-free.dev',
-      disk: { path: '/Users/ram/Desktop/Event-Scanner/server/data', free: 120 * GB, total: 500 * GB },
-      server: { temp: 0, legacy_copies: 0, backups: 300 * 1024 ** 2, database: 80 * 1024 ** 2, cache: 120 * 1024 ** 2 },
-      cache_max: 300 * 1024 ** 2,
-      onedrive: { connected: true, quota: { total: 1024 * GB, used: 256 * GB, remaining: 768 * GB }, copies: 14.5 * GB },
-      copies: { waiting: 0, lost: 0, running: false, last_error: null, local_done: true },
-      min_free_upload: 1 * GB,
-      warn_below: 5 * GB,
-      critical_below: 2 * GB,
-      backups_on: true,
-    },
-  },
+  'GET /admin/storage': storage(),
   'GET /admin/onedrive/status': { body: { status: { kind: 'local', rootName: 'demo' }, setup: {}, backup: { dir: '/Users/ram/Desktop/Event-Scanner/backups', last_at: '2026-11-17T02:00:00Z', last_error: null } } },
   ...over,
 });
@@ -144,53 +154,51 @@ describe('settings: alerts and storage', () => {
     expect(screen.getByRole('button', { name: /Send a test email/ })).toBeDisabled();
   });
 
-  it('says photos and videos live in OneDrive, and shows this Mac, OneDrive and the app\'s copies there', async () => {
+  it('shows the database, this Mac and Microsoft OneDrive, each its own part, and nothing of the disk itself', async () => {
     mockFetch(alertsTab());
     renderAt('/admin/settings?tab=alerts', admin);
-    expect(await screen.findByText('This Mac: 120.0 GB free of 500.0 GB')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Database' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'This Mac' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Microsoft OneDrive' })).toBeInTheDocument();
     expect(screen.getByText(/Photos and videos are stored only in Microsoft OneDrive/)).toHaveTextContent(
-      "Photos and videos are stored only in Microsoft OneDrive: your originals and the app's own copies (thumbnails, web copies, video previews, download copies) in the folder _app copies (do not edit). This Mac keeps only the database (settings, face data), backups, a small photo cache and short-lived temporary files. Every upload passes through it on the way to OneDrive, so it needs some free space.",
+      'Photos and videos are stored only in Microsoft OneDrive. The database keeps the events, settings and face data. The server keeps only short-lived working files and a small photo cache: every upload passes through it on its way to OneDrive.',
     );
-    expect(screen.getByRole('progressbar', { name: 'Space used on this Mac' })).toHaveAttribute('aria-valuenow', '76');
     const row = (label: string) => screen.getByText(label).parentElement!;
-    expect(row('Database')).toHaveTextContent('80 MB');
+    expect(row('Size')).toHaveTextContent('80 MB');
     expect(row('Backups')).toHaveTextContent('300 MB');
     expect(row('Temporary files')).toHaveTextContent('None');
     expect(row('Photo cache')).toHaveTextContent('120 MB');
     expect(row('Photo cache')).toHaveTextContent('at most 300 MB');
-    expect(screen.queryByText('Old copies still on this Mac')).not.toBeInTheDocument();
+    expect(screen.queryByText('Old copies still here')).not.toBeInTheDocument();
     expect(screen.getByText('OneDrive: 256.0 GB used of 1024.0 GB')).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Space used in OneDrive' })).toHaveAttribute('aria-valuenow', '25');
     expect(row('App copies in OneDrive')).toHaveTextContent('14.5 GB');
+    expect(row('App copies in OneDrive')).toHaveTextContent('in the folder _app copies (do not edit)');
     expect(row('Copies being rebuilt')).toHaveTextContent('None');
     expect(row('Photos that cannot be shown')).toHaveTextContent('None');
     expect(await screen.findByText('Last backup')).toBeInTheDocument();
     expect(row('Last backup')).toHaveTextContent('In /Users/ram/Desktop/Event-Scanner/backups');
-    expect(screen.queryByText(/Uploads stop below/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Uploads are paused/)).not.toBeInTheDocument();
-    expect(screen.getByText(/Free up space/)).toBeInTheDocument(); // the OneDrive sync client advice
+    // The disk itself is not shown: no meter, no free space, nothing about uploads while they go.
+    expect(screen.queryByRole('progressbar', { name: /Space used on/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/free of|Measured on the disk/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Uploads are paused|Uploads stop below/)).not.toBeInTheDocument();
+    expect(screen.getByText(/Free up space/)).toBeInTheDocument(); // the OneDrive sync client advice, on a Mac
   });
 
-  it('while copies are moved and rebuilt: the old copies still on the Mac, how many wait, and those that cannot be shown', async () => {
+  it('while copies are moved and rebuilt: the old copies still here, how many wait, and those that cannot be shown', async () => {
     mockFetch(
       alertsTab({
-        'GET /admin/storage': {
-          body: {
-            disk: { path: '/data', free: 50 * GB, total: 250 * GB },
-            server: { temp: 2 * 1024 ** 2, legacy_copies: 3 * GB, backups: 0, database: GB },
-            onedrive: { connected: true, quota: null, copies: null },
-            copies: { waiting: 1200, lost: 3, running: true, last_error: 'OneDrive answered 500', local_done: false },
-            min_free_upload: GB,
-            warn_below: 5 * GB,
-            critical_below: 2 * GB,
-            backups_on: false,
-          },
-        },
+        'GET /admin/storage': storage({
+          database: { size: GB, backups: 0, backups_on: false },
+          server: { temp: 2 * MB, legacy_copies: 3 * GB, cache: 0, cache_max: 0 },
+          onedrive: { quota: null, copies: null },
+          copies: { waiting: 1200, lost: 3, running: true, last_error: 'OneDrive answered 500', local_done: false },
+        }),
       }),
     );
     renderAt('/admin/settings?tab=alerts', admin);
     const row = async (label: string) => (await screen.findByText(label)).parentElement!;
-    expect(await row('Old copies still on this Mac')).toHaveTextContent('3.0 GB');
+    expect(await row('Old copies still here')).toHaveTextContent('3.0 GB');
     expect(await row('Copies being rebuilt')).toHaveTextContent('1200, working');
     expect(await row('Photos that cannot be shown')).toHaveTextContent('3');
     expect(await row('App copies in OneDrive')).toHaveTextContent('Not known');
@@ -198,68 +206,37 @@ describe('settings: alerts and storage', () => {
     expect(screen.getByText('Last problem making a copy: OneDrive answered 500')).toBeInTheDocument();
   });
 
-  it('warns below 5 GB and says uploads are paused below 1 GB', async () => {
-    const storage = (free: number, extra: Record<string, unknown> = {}) => ({
-      body: {
-        disk: { path: '/data', free, total: 250 * GB },
-        server: { temp: 0, legacy_copies: 0, backups: 0, database: GB },
-        onedrive: { connected: true, quota: null, copies: 0 },
-        copies: { waiting: 0, lost: 0, running: false, last_error: null, local_done: true },
-        min_free_upload: 1 * GB,
-        warn_below: 5 * GB,
-        critical_below: 2 * GB,
-        backups_on: false,
-        ...extra,
-      },
-    });
-    mockFetch(alertsTab({ 'GET /admin/storage': storage(3 * GB) }));
+  it('says nothing about the disk while uploads go, and says so with what to do once they are paused', async () => {
+    mockFetch(alertsTab({ 'GET /admin/storage': storage({ database: { backups: 0, backups_on: false }, server: { cache_max: 0 } }) }));
     const first = renderAt('/admin/settings?tab=alerts', admin);
-    expect(await screen.findByText('Less than 5 GB free. Uploads stop below 1 GB. Free up space on the Mac.')).toBeInTheDocument();
+    expect(await screen.findByText('Temporary files')).toBeInTheDocument();
+    expect(screen.queryByText(/Uploads are paused|Uploads stop below|GB free/)).not.toBeInTheDocument();
     expect(screen.getByText('Backups').parentElement).toHaveTextContent('Off');
     expect(screen.getByText('Photo cache').parentElement).toHaveTextContent('Off');
     expect(screen.queryByText('Last backup')).not.toBeInTheDocument();
     first.unmount();
 
-    mockFetch(alertsTab({ 'GET /admin/storage': storage(0.5 * GB) }));
+    mockFetch(alertsTab({ 'GET /admin/storage': storage({ server: { uploads_paused: true } }) }));
     renderAt('/admin/settings?tab=alerts', admin);
     expect(await screen.findByText('Uploads are paused: less than 1 GB free for temporary files. Free up space on the Mac.')).toBeInTheDocument();
-    expect(screen.queryByText(/Uploads stop below/)).not.toBeInTheDocument();
   });
 
-  it('on a server: names which server, lists only the app\'s own files there, and advises a bigger disk', async () => {
+  it('on a server: names it by its address, lists only the app\'s own files there, and advises a bigger disk once uploads are paused', async () => {
     mockFetch(
       alertsTab({
-        'GET /admin/storage': {
-          body: {
-            machine: 'server',
-            host: 'stmarys-event-scanner.supercxo.ai',
-            disk: { path: '/home/ubuntu/event-photos/server/data', free: 2 * GB, total: 6 * GB },
-            server: { temp: 0, legacy_copies: 0, backups: 256 * 1024 ** 2, database: 512 * 1024 ** 2, cache: 256 * 1024 ** 2 },
-            cache_max: 300 * 1024 ** 2,
-            onedrive: { connected: true, quota: null, copies: 0 },
-            copies: { waiting: 0, lost: 0, running: false, last_error: null, local_done: true },
-            min_free_upload: 1 * GB,
-            warn_below: 5 * GB,
-            critical_below: 2 * GB,
-            backups_on: true,
-          },
-        },
+        'GET /admin/storage': storage({ machine: 'server', host: 'stmarys-event-scanner.supercxo.ai', server: { cache: 256 * MB, uploads_paused: true } }),
       }),
     );
     renderAt('/admin/settings?tab=alerts', admin);
-    expect(await screen.findByText('This server (stmarys-event-scanner.supercxo.ai): 2.0 GB free of 6.0 GB')).toBeInTheDocument();
-    expect(screen.getByText(/Photos and videos are stored only in Microsoft OneDrive/)).toHaveTextContent(
-      'This server (stmarys-event-scanner.supercxo.ai) keeps only the database (settings, face data), backups, a small photo cache and short-lived temporary files. Every upload passes through it on the way to OneDrive, so it needs some free space.',
-    );
-    expect(screen.getByRole('progressbar', { name: 'Space used on this server' })).toHaveAttribute('aria-valuenow', '67');
-    expect(screen.getByText('Less than 5 GB free. Uploads stop below 1 GB. Give the server a bigger disk, or free up space on it.')).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Server' })).toBeInTheDocument();
+    expect(screen.getByText('stmarys-event-scanner.supercxo.ai')).toBeInTheDocument();
+    expect(screen.getByText('Uploads are paused: less than 1 GB free for temporary files. Give the server a bigger disk, or free up space on it.')).toBeInTheDocument();
     const row = (label: string) => screen.getByText(label).parentElement!;
     expect(row('Photo cache')).toHaveTextContent('256 MB');
-    // Only the app's own files on the server: nothing else of the system is looked at or listed.
-    await screen.findByText('Last backup');
-    const kv = row('Database').parentElement!;
-    expect([...kv.children].map((d) => d.firstElementChild?.textContent)).toEqual(['Database', 'Backups', 'Temporary files', 'Photo cache', 'Last backup']);
-    expect(screen.queryByText(/this Mac|the Mac/)).not.toBeInTheDocument(); // nor the OneDrive app advice, which is for a Mac
+    // Only the app's own files on the server: nothing else of it is looked at or listed.
+    const kv = row('Temporary files').parentElement!;
+    expect([...kv.children].map((d) => d.firstElementChild?.textContent)).toEqual(['Temporary files', 'Photo cache']);
+    expect(screen.queryByText(/\bMac\b/)).not.toBeInTheDocument(); // nor the OneDrive app advice, which is for a Mac
   });
 
   it('says when the last backup failed', async () => {

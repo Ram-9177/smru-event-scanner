@@ -22,28 +22,34 @@ export interface DiskSpace {
 }
 
 /**
- * What Settings > Storage shows (GET /api/admin/storage). Bytes. Photos and videos live in OneDrive (the originals,
- * and the app's own copies in "_app copies (do not edit)"); the computer the app runs on keeps the database, backups,
- * the photo cache and temp files.
+ * What Settings > Storage shows (GET /api/admin/storage). Bytes. Three parts, each of which can be on its own account:
+ * the database (events, settings, face data, and its backups), the server (only short-lived working files and a small
+ * photo cache) and Microsoft OneDrive (every photo and video: the originals, and the app's own copies in "_app copies
+ * (do not edit)"). The server's disk itself is not reported: it is only checked before an upload (uploads_paused).
  */
 export interface StorageReport {
-  /** What the console calls that computer: 'Mac' or 'server' (cfg.machine). */
+  /** What the console calls the computer the app runs on: 'Mac' or 'server' (cfg.machine). */
   machine: Config['machine'];
-  /** The address the app is reached at (PUBLIC_URL's host), to say which server. */
+  /** The address the app is reached at (PUBLIC_URL's host), to name the server. */
   host: string;
-  /** The disk holding server/data. */
-  disk: DiskSpace;
+  database: {
+    /** pg_database_size of the app's database. */
+    size: number;
+    /** BACKUP_DIR: the database dumps (0 when backups are off). */
+    backups: number;
+    backups_on: boolean;
+  };
   server: {
     /** data/tmp: uploads and downloads in progress, files of one job. */
     temp: number;
+    /** data/cache: thumbnails and main-view copies kept for speed, at most cache_max (IMG_CACHE_MB; 0 = off). */
+    cache: number;
+    cache_max: number;
     /** data/media, data/full, data/people: copies from before photos lived only in OneDrive (0 once moved). */
     legacy_copies: number;
-    /** BACKUP_DIR: the database dumps (0 when backups are off). */
-    backups: number;
-    /** pg_database_size of the app's database. */
-    database: number;
-    /** data/cache: thumbnails and main-view copies kept for speed (IMG_CACHE_MB). */
-    cache: number;
+    /** Uploads are refused right now: less than min_free_upload free for temporary files (TEMP_MIN_FREE_GB). */
+    uploads_paused: boolean;
+    min_free_upload: number;
   };
   onedrive: {
     connected: boolean;
@@ -61,14 +67,6 @@ export interface StorageReport {
     /** Nothing of the album is kept on the server any more. */
     local_done: boolean;
   };
-  /** The photo cache's limit (IMG_CACHE_MB; 0 = off). */
-  cache_max: number;
-  /** Uploads are refused below this (TEMP_MIN_FREE_GB). */
-  min_free_upload: number;
-  /** The alert levels (ALERT_DISK_WARN_GB, ALERT_DISK_CRITICAL_GB). */
-  warn_below: number;
-  critical_below: number;
-  backups_on: boolean;
 }
 
 type Probe = (dir: string) => Promise<{ free: number; total: number }>;
@@ -178,7 +176,7 @@ const hostOf = (url: string) => {
   }
 };
 
-/** Settings > Storage: the server (database, backups, photo cache, temp files) and OneDrive (originals and the app's copies). */
+/** Settings > Storage: the database (and its backups), the server (temp files, photo cache) and OneDrive (originals and the app's copies). */
 export async function storageReport(ctx: Ctx): Promise<StorageReport> {
   const { cfg } = ctx;
   const [disk, temp, cache, legacyMedia, legacyFull, legacyPeople, backups, database, status, copiesBytes, counts, local] = await Promise.all([
@@ -202,19 +200,20 @@ export async function storageReport(ctx: Ctx): Promise<StorageReport> {
       .then((r) => r.rows[0]),
     ctx.db.query(`select 1 from app_state where key = 'copies_local_done'`).then((r) => r.rows.length > 0),
   ]);
-  // A disk that could not be measured is sent as 0 (JSON has no Infinity).
-  const finite = (n: number) => (Number.isFinite(n) ? n : 0);
   return {
     machine: cfg.machine,
     host: hostOf(cfg.publicUrl),
-    disk: { path: disk.path, free: finite(disk.free), total: finite(disk.total) },
-    server: { temp, legacy_copies: legacyMedia + legacyFull + legacyPeople, backups, database, cache },
+    database: { size: database, backups, backups_on: !!cfg.backupDir },
+    server: {
+      temp,
+      cache,
+      cache_max: cfg.viewCacheBytes,
+      legacy_copies: legacyMedia + legacyFull + legacyPeople,
+      // Only whether uploads must wait: the disk's size and free space are not sent (a disk that cannot be read never blocks).
+      uploads_paused: disk.free < cfg.uploadMinFreeBytes,
+      min_free_upload: cfg.uploadMinFreeBytes,
+    },
     onedrive: { connected: !!status?.connected, quota: status?.quota ?? null, copies: copiesBytes },
     copies: { waiting: counts.waiting, lost: counts.lost, running: rebuildRunning(ctx), last_error: counts.last_error, local_done: local },
-    cache_max: cfg.viewCacheBytes,
-    min_free_upload: cfg.uploadMinFreeBytes,
-    warn_below: cfg.alerts.diskWarnBytes,
-    critical_below: cfg.alerts.diskCriticalBytes,
-    backups_on: !!cfg.backupDir,
   };
 }

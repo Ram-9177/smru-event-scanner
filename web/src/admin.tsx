@@ -2804,80 +2804,42 @@ interface BackupStatus {
 }
 
 /**
- * Settings > Alerts and storage: where photos and videos are (Microsoft OneDrive only: the originals and the app's own
- * copies), and what the app keeps on the computer it runs on (the database, backups, a small photo cache, temporary
- * files), called "this Mac" or "this server (its address)". Only the app's own files and that disk's free space are
- * shown, nothing else of the system.
+ * Settings > Alerts and storage: the three places the app keeps things, each of which can be on its own account: the
+ * database (events, settings, face data, and its backups), the server, named by its address (only short-lived working
+ * files and a small photo cache), and Microsoft OneDrive (every photo and video). The server's disk itself is not
+ * shown: the card only speaks of it when uploads have to wait for room there.
  */
 function StorageCard() {
   const report = useApi<StorageReport>('/admin/storage');
   // The backups' state comes with the OneDrive status (super admins only).
   const backup = useApi<{ backup?: BackupStatus }>('/admin/onedrive/status').data?.backup;
   const r = report.data;
-  const here = r?.machine === 'server' ? 'server' : 'Mac';
-  const used = r && r.disk.total > 0 ? Math.min(100, Math.max(0, Math.round(((r.disk.total - r.disk.free) / r.disk.total) * 100))) : 0;
   const q = r?.onedrive.quota ?? null;
   const odUsed = q && q.total > 0 ? Math.min(100, Math.max(0, Math.round((q.used / q.total) * 100))) : 0;
   const amount = (n: number) => (n > 0 ? size(n) : 'None');
-  const paused = !!r && r.disk.free < r.min_free_upload;
-  const low = !!r && !paused && r.disk.free < r.warn_below;
-  const fix = here === 'server' ? 'Give the server a bigger disk, or free up space on it.' : 'Free up space on the Mac.';
-  // "This server (stmarys-event-scanner.supercxo.ai)": which server, so nobody takes it for their own computer.
-  const where = here === 'server' && r?.host ? `This server (${r.host})` : `This ${here}`;
+  const onMac = r?.machine === 'Mac';
+  const fix = onMac ? 'Free up space on the Mac.' : 'Give the server a bigger disk, or free up space on it.';
   return (
     <Section icon="chart" title="Storage" edge="navy">
       <Load query={report}>
         {r && (
           <>
             <p className="muted small mt-0">
-              Photos and videos are stored only in Microsoft OneDrive: your originals and the app's own copies (thumbnails, web copies, video previews, download copies) in the folder{' '}
-              <code>_app copies (do not edit)</code>.{' '}
-              {`${where} keeps only the database (settings, face data), backups, a small photo cache and short-lived temporary files. Every upload passes through it on the way to OneDrive, so it needs some free space.`}
+              Photos and videos are stored only in Microsoft OneDrive. The database keeps the events, settings and face data. The server keeps only short-lived working files and a small photo
+              cache: every upload passes through it on its way to OneDrive.
             </p>
-            <p className="storage-free m-0">
-              <b>{`${where}: ${size(r.disk.free)} free of ${size(r.disk.total)}`}</b>
-            </p>
-            <div className="meter storage-meter" role="progressbar" aria-label={`Space used on this ${here}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={used}>
-              <i style={{ width: `${used}%` }} className={paused ? 'bad' : low ? 'low' : ''} />
-            </div>
-            <p className="muted small mt-1">
-              {used}% used. Measured on the disk that holds <code className="break-all">{r.disk.path}</code>.
-            </p>
-            {paused ? (
-              <Note bad>{`Uploads are paused: less than ${gbs(r.min_free_upload)} free for temporary files. ${fix}`}</Note>
-            ) : (
-              low && <Note kind="warn">{`Less than ${gbs(r.warn_below)} free. Uploads stop below ${gbs(r.min_free_upload)}. ${fix}`}</Note>
-            )}
+
+            <h3 className="mt-3 mb-2">Database</h3>
             <div className="kv mb-0">
               <div>
-                <span>Database</span>
-                <b>{amount(r.server.database)}</b>
+                <span>Size</span>
+                <b>{amount(r.database.size)}</b>
               </div>
               <div>
                 <span>Backups</span>
-                <b>{r.backups_on ? amount(r.server.backups) : 'Off'}</b>
+                <b>{r.database.backups_on ? amount(r.database.backups) : 'Off'}</b>
               </div>
-              <div>
-                <span>Temporary files</span>
-                <b>{amount(r.server.temp)}</b>
-              </div>
-              <div>
-                <span>Photo cache</span>
-                <b>
-                  {r.cache_max > 0 ? amount(r.server.cache ?? 0) : 'Off'}
-                  {r.cache_max > 0 && <span className="muted small block font-normal">{`Recent thumbnails and photos, kept here for speed: at most ${size(r.cache_max)}`}</span>}
-                </b>
-              </div>
-              {r.server.legacy_copies > 0 && (
-                <div>
-                  <span>{`Old copies still on this ${here}`}</span>
-                  <b>
-                    {amount(r.server.legacy_copies)}
-                    <span className="muted small block font-normal">Moved to OneDrive by themselves, then removed here.</span>
-                  </b>
-                </div>
-              )}
-              {r.backups_on && backup && (
+              {r.database.backups_on && backup && (
                 <div>
                   <span>Last backup</span>
                   <b>
@@ -2887,9 +2849,36 @@ function StorageCard() {
                 </div>
               )}
             </div>
-            {r.backups_on && backup?.last_error && <Note bad>{`The last backup did not work: ${backup.last_error}`}</Note>}
+            {r.database.backups_on && backup?.last_error && <Note bad>{`The last backup did not work: ${backup.last_error}`}</Note>}
 
-            <h3 className="mt-4 mb-2">OneDrive</h3>
+            {/* Named by its address, so nobody takes it for their own computer. */}
+            <h3 className={onMac || !r.host ? 'mt-4 mb-2' : 'mt-4 mb-0'}>{onMac ? 'This Mac' : 'Server'}</h3>
+            {!onMac && r.host && <p className="muted small mt-0 mb-2 break-all">{r.host}</p>}
+            {r.server.uploads_paused && <Note bad>{`Uploads are paused: less than ${gbs(r.server.min_free_upload)} free for temporary files. ${fix}`}</Note>}
+            <div className="kv mb-0">
+              <div>
+                <span>Temporary files</span>
+                <b>{amount(r.server.temp)}</b>
+              </div>
+              <div>
+                <span>Photo cache</span>
+                <b>
+                  {r.server.cache_max > 0 ? amount(r.server.cache) : 'Off'}
+                  {r.server.cache_max > 0 && <span className="muted small block font-normal">{`Recent thumbnails and photos, kept here for speed: at most ${size(r.server.cache_max)}`}</span>}
+                </b>
+              </div>
+              {r.server.legacy_copies > 0 && (
+                <div>
+                  <span>Old copies still here</span>
+                  <b>
+                    {amount(r.server.legacy_copies)}
+                    <span className="muted small block font-normal">Moved to OneDrive by themselves, then removed here.</span>
+                  </b>
+                </div>
+              )}
+            </div>
+
+            <h3 className="mt-4 mb-2">Microsoft OneDrive</h3>
             {q ? (
               <>
                 <p className="storage-free m-0">
@@ -2905,7 +2894,10 @@ function StorageCard() {
             <div className="kv mb-0">
               <div>
                 <span>App copies in OneDrive</span>
-                <b>{r.onedrive.copies == null ? 'Not known' : amount(r.onedrive.copies)}</b>
+                <b>
+                  {r.onedrive.copies == null ? 'Not known' : amount(r.onedrive.copies)}
+                  <span className="muted small block font-normal">Thumbnails, web copies, video previews and download copies, in the folder _app copies (do not edit)</span>
+                </b>
               </div>
               <div>
                 <span>Copies being rebuilt</span>
@@ -2920,7 +2912,7 @@ function StorageCard() {
               </div>
             </div>
             {r.copies.last_error && r.copies.waiting > 0 && <Note kind="warn">{`Last problem making a copy: ${r.copies.last_error}`}</Note>}
-            {here === 'Mac' && (
+            {onMac && (
               <p className="muted small mt-2 mb-0">
                 If the OneDrive app on this Mac syncs the Event Photos folder, set <code>_app copies (do not edit)</code> to "Free up space" (online only), so the copies do not fill this Mac.
               </p>

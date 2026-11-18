@@ -38,24 +38,23 @@ afterAll(async () => {
 });
 
 describe('GET /api/admin/storage', () => {
-  it('shows this Mac (database, backups, temp files, old copies still here) and OneDrive (its space and the app\'s copies)', async () => {
-    put('media/ev1/a.t.jpg', 1000); // copies an older version kept on this Mac (until the copies job moves them)
+  it('shows the database (and its backups), the server (temp files, photo cache, old copies still here) and OneDrive, each its own part', async () => {
+    put('media/ev1/a.t.jpg', 1000); // copies an older version kept on the server (until the copies job moves them)
     put('media/ev1/deeper/a.w.jpg', 2000);
     put('full/abc.jpg', 5000);
     put('tmp/upload-1', 300);
     fs.writeFileSync(path.join(backupDir, 'event_photos-2026-11-17-0930.dump'), Buffer.alloc(7000));
 
     const r = (await h.admin.get('/api/admin/storage').expect(200)).body;
-    expect(r.disk).toEqual({ path: h.ctx.cfg.dataDir, free: 120 * GB, total: 500 * GB });
-    expect(r.server).toMatchObject({ temp: 300, legacy_copies: 8000, backups: 7000 });
-    expect(r.server.database).toBeGreaterThan(0);
+    expect(Object.keys(r).sort()).toEqual(['copies', 'database', 'host', 'machine', 'onedrive', 'server']); // nothing of the disk itself
+    expect(r.database).toMatchObject({ backups: 7000, backups_on: true });
+    expect(r.database.size).toBeGreaterThan(0);
+    // The photo cache is off in these tests; 120 GB free: uploads go.
+    expect(r.server).toEqual({ temp: 300, cache: 0, cache_max: 0, legacy_copies: 8000, uploads_paused: false, min_free_upload: 1 * GB });
     expect(r.onedrive).toMatchObject({ connected: true, quota: null });
     expect(r.copies).toEqual({ waiting: 0, lost: 0, running: false, last_error: null, local_done: false });
-    expect(r).toMatchObject({ min_free_upload: 1 * GB, warn_below: 5 * GB, critical_below: 2 * GB, backups_on: true });
     expect(r.machine).toBe('Mac'); // what the console calls this computer (a server on anything but macOS)
     expect(r.host).toBe('photos.college.test'); // PUBLIC_URL's host: which server
-    expect(r.server.cache).toBe(0);
-    expect(r.cache_max).toBe(0); // the photo cache is off in these tests
     fs.rmSync(path.join(h.ctx.cfg.dataDir, 'media'), { recursive: true });
     fs.rmSync(path.join(h.ctx.cfg.dataDir, 'full'), { recursive: true });
     fs.rmSync(path.join(h.ctx.cfg.dataDir, 'tmp', 'upload-1'));
@@ -70,7 +69,7 @@ describe('GET /api/admin/storage', () => {
       const r = (await h.admin.get('/api/admin/storage').expect(200)).body;
       expect(r.machine).toBe('server');
       expect(r.server.cache).toBe(10_000);
-      expect(r.cache_max).toBe(300 * 1024 ** 2);
+      expect(r.server.cache_max).toBe(300 * 1024 ** 2);
     } finally {
       h.ctx.cfg.viewCacheBytes = 0;
       h.ctx.cfg.machine = 'Mac';
@@ -82,10 +81,21 @@ describe('GET /api/admin/storage', () => {
     h.ctx.cfg.backupDir = '';
     try {
       const r = (await h.admin.get('/api/admin/storage').expect(200)).body;
-      expect(r.backups_on).toBe(false);
-      expect(r.server.backups).toBe(0);
+      expect(r.database.backups_on).toBe(false);
+      expect(r.database.backups).toBe(0);
     } finally {
       h.ctx.cfg.backupDir = backupDir;
+    }
+  });
+
+  it('says only whether uploads are paused for want of room, not how big or full the disk is', async () => {
+    free = 0.5 * GB;
+    try {
+      const r = (await h.admin.get('/api/admin/storage').expect(200)).body;
+      expect(r.server).toMatchObject({ uploads_paused: true, min_free_upload: 1 * GB });
+      expect(JSON.stringify(r)).not.toContain(String(0.5 * GB));
+    } finally {
+      free = 120 * GB;
     }
   });
 
