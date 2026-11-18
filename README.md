@@ -409,19 +409,18 @@ Everything for the server is in `deploy/` (Docker Compose: the app, PostgreSQL 1
 1. DNS: point an `A` record for `smru-event-scanner.supercxo.ai` at the server's IP. Open ports 80 and 443.
 2. Microsoft Entra: add this redirect URI to the app registration (OneDrive and Microsoft sign-in both come back
    to it): `https://smru-event-scanner.supercxo.ai/admin/onedrive/callback`.
-3. Settings: two private files in `deploy/` on the server (never committed, never put in the image):
-   - `deploy/production.env`: start from `deploy/production.env.example`. `PUBLIC_URL` is the domain; leave out
-     `NGROK_DOMAIN` (it would replace `PUBLIC_URL`) and `HOST` (Compose sets it).
-   - `deploy/.env`: `POSTGRES_PASSWORD=` a long random string of letters and digits.
+3. Settings: one private file, `deploy/.env` (never committed, never put in the image). Start from
+   `deploy/.env.example`. `PUBLIC_URL` is the domain; leave out `NGROK_DOMAIN` (it would replace `PUBLIC_URL`) and
+   `HOST` (Compose sets it). `POSTGRES_PASSWORD` is required: the server does not start without it.
 
    `SESSION_SECRET` must be the one the old copy used when you bring its database over (on a Mac started without
    one, it is in `server/data/dev-secret`): it unlocks the OneDrive sign-in kept in the database. With a new
    secret, connect OneDrive again from the organiser page.
-4. To bring over the events from the Mac (optional), before the app's first start on the server:
-   `docker compose -f deploy/docker-compose.yml up -d db`, then
-   `docker compose -f deploy/docker-compose.yml exec -T db pg_restore -U event_photos -d event_photos --no-owner --no-acl < event_photos-<date>.dump`
+4. To bring over the events from the Mac (optional), before the app's first start on the server, in `deploy/`:
+   `docker compose up -d db`, then
+   `docker compose exec -T db pg_restore -U event_photos -d event_photos --no-owner --no-acl < event_photos-<date>.dump`
    with the latest file from `backups/` on the Mac.
-5. `docker compose -f deploy/docker-compose.yml up -d --build`
+5. `cd deploy && docker compose up -d --build`
 
 Caddy gets the HTTPS certificate by itself. Photos and videos stay in OneDrive; the server keeps the database,
 Redis, temp files and the small view cache. QR codes, share links and emails all use `PUBLIC_URL`, so print new QR

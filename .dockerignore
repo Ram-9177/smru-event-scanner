@@ -1,7 +1,7 @@
 **/node_modules
 **/dist
 server/data
-# Secrets never go into the image: settings come from deploy/production.env at run time.
+# Secrets never go into the image: settings come from deploy/.env at run time.
 **/.env
 **/*.env
 !**/*.env.example
