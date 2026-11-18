@@ -229,6 +229,10 @@ export function adminRoutes(ctx: Ctx): Router {
   r.delete('/team/:id', requireSuper, async (req, res) => {
     const u = await member(String(req.params.id));
     if (u.id === me(res).id) throw bad(400, 'yourself', 'You cannot remove your own account.');
+    // Added again at every start while it is in the settings: removing it here would not last.
+    if (u.email === ctx.cfg.adminEmail) {
+      throw bad(400, 'settings_organiser', 'This organiser is set in the server settings (ADMIN_EMAIL). Change ADMIN_EMAIL there to remove them.');
+    }
     await db.tx(async (tx) => {
       const supers = await lockSupers(tx);
       if (supers.includes(u.id) && supers.length <= 1) throw bad(400, 'last_super_admin', 'There has to be one super admin.');

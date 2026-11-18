@@ -48,6 +48,22 @@ export interface ContextOptions {
   quiet?: boolean;
 }
 
+/**
+ * The organiser named in the settings (ADMIN_EMAIL, ADMIN_PASSWORD) is added as a super admin whenever that email
+ * has no sign-in yet: on the first start, and when a database is brought over from another copy (its organisers come
+ * with it, and this one is added next to them). An existing sign-in is never changed here: a password changed in the
+ * app stays. The app does not let this organiser be removed (routes/admin.ts), so a removal is never undone here.
+ */
+export async function ensureSettingsOrganiser(db: Db, orgId: string, cfg: Pick<Config, 'adminEmail' | 'adminPassword'>): Promise<boolean> {
+  if (!cfg.adminEmail || !cfg.adminPassword) return false;
+  if ((await db.query(`select 1 from users where email = $1`, [cfg.adminEmail])).rows.length) return false;
+  const made = await db.query(
+    `insert into users (org_id, email, password_hash, role) values ($1, $2, $3, 'super_admin') on conflict (email) do nothing`,
+    [orgId, cfg.adminEmail, await hashPassword(cfg.adminPassword)],
+  );
+  return (made.rowCount ?? 0) > 0;
+}
+
 export async function createContext(cfg: Config, opts: ContextOptions = {}): Promise<Ctx> {
   fs.mkdirSync(cfg.dataDir, { recursive: true });
   if (!cfg.sessionSecret) {
@@ -76,16 +92,7 @@ export async function createContext(cfg: Config, opts: ContextOptions = {}): Pro
     const rows = cfg.campuses.map((name, i) => ({ org_id: org.id, name, slug: slugify(name), sort: i }));
     if (rows.length) await db.knex('campuses').insert(rows).onConflict(['org_id', 'slug']).ignore();
   }
-  if (cfg.adminEmail && cfg.adminPassword) {
-    const users = (await db.query<{ n: number }>(`select count(*)::int as n from users`)).rows[0].n;
-    if (users === 0) {
-      await db.query(`insert into users (org_id, email, password_hash, role) values ($1, $2, $3, 'super_admin')`, [
-        org.id,
-        cfg.adminEmail,
-        await hashPassword(cfg.adminPassword),
-      ]);
-    }
-  }
+  await ensureSettingsOrganiser(db, org.id, cfg);
 
   const versions = new Map<string, number>();
   const face = opts.face ?? (await defaultFace(cfg));
