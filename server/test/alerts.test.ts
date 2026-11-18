@@ -149,6 +149,31 @@ describe('disk space', () => {
     expect(await active()).toEqual([]);
     expect(mailsAbout('Fixed: The server is nearly full: 0.6 GB free')).toHaveLength(1);
   });
+
+  it('on a server (not a Mac) it advises a bigger disk: photos are in OneDrive, this disk holds the database and uploads on their way', async () => {
+    h.ctx.cfg.machine = 'server';
+    try {
+      free = 1.9 * GB;
+      await checkAlerts(h.ctx, at(60_000));
+      let [row] = await active();
+      expect(row).toMatchObject({
+        key: 'disk_low',
+        severity: 'critical',
+        title: 'The server is nearly full: 1.9 GB free',
+        detail: 'Give the server a bigger disk, or free up space on it. Uploads stop below 1 GB.',
+      });
+      free = 0.6 * GB;
+      await checkAlerts(h.ctx, at(60_000));
+      [row] = await active();
+      expect(row.detail).toBe('Uploads are paused until there is at least 1 GB free. Give the server a bigger disk, or free up space on it.');
+      free = 40 * GB;
+      await checkAlerts(h.ctx, at(60_000));
+      expect(await active()).toEqual([]);
+    } finally {
+      h.ctx.cfg.machine = 'Mac';
+      free = 40 * GB;
+    }
+  });
 });
 
 describe('photos in OneDrive', () => {

@@ -20,6 +20,8 @@ export interface Config {
   publicUrl: string;
   /** Folder for temp files, keys and (in demo mode) the stand-in drive. No photo or video is kept here: they live in OneDrive. */
   dataDir: string;
+  /** What the console calls the computer the app runs on ("Free up space on the Mac"): 'Mac' on macOS, else 'server'. */
+  machine: 'Mac' | 'server';
   /** PostgreSQL 16 connection string. */
   databaseUrl: string;
   /** Redis 7: sign-in limits, signed-out tokens, one-time links. */
@@ -154,7 +156,7 @@ export interface Config {
     everyMin: number;
     /** The morning summary is sent from this hour, server time (ALERT_DIGEST_HOUR, 0-23; -1 = no summary). */
     digestHour: number;
-    /** Free disk below this many bytes: a warning (ALERT_DISK_WARN_GB, default 5: this Mac keeps only the database, backups and temp files). */
+    /** Free disk below this many bytes: a warning (ALERT_DISK_WARN_GB, default 5: the server keeps only the database, backups, the photo cache and temp files). */
     diskWarnBytes: number;
     /** Free disk below this many bytes: critical (ALERT_DISK_CRITICAL_GB, default 2). */
     diskCriticalBytes: number;
@@ -165,7 +167,7 @@ export interface Config {
   };
   /** When the OneDrive client secret runs out (MS_CLIENT_SECRET_EXPIRES=YYYY-MM-DD, from Entra). Empty = not known. */
   msClientSecretExpires: string;
-  /** Uploads (students' and organisers') are refused while this Mac has less free than this for temporary files (TEMP_MIN_FREE_GB, the older UPLOAD_MIN_FREE_GB still read; default 1). */
+  /** Uploads (students' and organisers') are refused while the server has less free than this for temporary files (TEMP_MIN_FREE_GB, the older UPLOAD_MIN_FREE_GB still read; default 1). */
   uploadMinFreeBytes: number;
   /** "Delete face data N days after the event" for a new event (FACE_DAYS_DEFAULT, default 90; 0 = unset). */
   faceDaysDefault: number;
@@ -209,6 +211,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, overrides: Part
     trustProxy: trustProxyFrom(env.TRUST_PROXY),
     publicUrl,
     dataDir,
+    machine: process.platform === 'darwin' ? 'Mac' : 'server',
     databaseUrl: env.DATABASE_URL || 'postgres://localhost:5432/event_photos',
     redisUrl: env.REDIS_URL || 'redis://127.0.0.1:6379',
     redisPrefix: env.REDIS_PREFIX || 'ep:',

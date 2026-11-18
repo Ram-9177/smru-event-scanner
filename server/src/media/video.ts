@@ -414,7 +414,7 @@ export async function makeCleanCopy(ctx: Ctx, mediaId: string, file: string, ext
   if (!row || row.status === 'archived') return null;
   const size = (await fs.promises.stat(file)).size;
   if ((await freeBytes(path.dirname(tempPath(cfg, 'x')))) < size * 1.1 + 512 * 1024 * 1024) {
-    ctx.log('a location-free video copy waits: this Mac has too little room for it right now');
+    ctx.log('a location-free video copy waits: the server has too little room for it right now');
     return null;
   }
   const st = await ctx.drive.status().catch(() => null);

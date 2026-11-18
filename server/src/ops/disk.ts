@@ -9,7 +9,7 @@ import { NEEDS_COPIES, rebuildRunning } from '../media/rebuild.js';
 
 /**
  * The disk that holds server/data (feature D, contract: bigger-contract.md). Owner: server-admin. It holds the
- * database, backups and temp files only: photos and videos are in OneDrive.
+ * database, backups, the photo cache and temp files only: photos and videos are in OneDrive.
  * diskSpace and assertRoomForUploads are used by the upload routes (public.ts and admin.ts) and by alerts.
  */
 
@@ -23,10 +23,15 @@ export interface DiskSpace {
 
 /**
  * What Settings > Storage shows (GET /api/admin/storage). Bytes. Photos and videos live in OneDrive (the originals,
- * and the app's own copies in "_app copies (do not edit)"); this Mac keeps the database, backups and temp files.
+ * and the app's own copies in "_app copies (do not edit)"); the computer the app runs on keeps the database, backups,
+ * the photo cache and temp files.
  */
 export interface StorageReport {
-  /** This Mac: the disk holding server/data. */
+  /** What the console calls that computer: 'Mac' or 'server' (cfg.machine). */
+  machine: Config['machine'];
+  /** The address the app is reached at (PUBLIC_URL's host), to say which server. */
+  host: string;
+  /** The disk holding server/data. */
   disk: DiskSpace;
   server: {
     /** data/tmp: uploads and downloads in progress, files of one job. */
@@ -37,6 +42,8 @@ export interface StorageReport {
     backups: number;
     /** pg_database_size of the app's database. */
     database: number;
+    /** data/cache: thumbnails and main-view copies kept for speed (IMG_CACHE_MB). */
+    cache: number;
   };
   onedrive: {
     connected: boolean;
@@ -51,9 +58,11 @@ export interface StorageReport {
     lost: number;
     running: boolean;
     last_error: string | null;
-    /** Nothing of the album is kept on this Mac any more. */
+    /** Nothing of the album is kept on the server any more. */
     local_done: boolean;
   };
+  /** The photo cache's limit (IMG_CACHE_MB; 0 = off). */
+  cache_max: number;
   /** Uploads are refused below this (TEMP_MIN_FREE_GB). */
   min_free_upload: number;
   /** The alert levels (ALERT_DISK_WARN_GB, ALERT_DISK_CRITICAL_GB). */
@@ -88,7 +97,11 @@ export async function diskSpace(cfg: Pick<Config, 'dataDir'>): Promise<DiskSpace
 
 /** The messages an upload refused for disk space gets (HTTP 507, error code disk_full). */
 export const DISK_FULL_STUDENT = 'The server is nearly full, so photos cannot be added right now. Try again later.';
-export const DISK_FULL_ORGANISER = 'This Mac has less than {X} free for temporary files, so uploads are paused. Photos and videos are kept in OneDrive; free some space on the Mac (Settings, Storage).';
+/** For organisers: what is short, and what to do about it on a Mac or on a server. */
+export function diskFullOrganiser(machine: Config['machine'], need: number): string {
+  const fix = machine === 'Mac' ? 'free some space on the Mac' : 'give the server a bigger disk, or free some space on it';
+  return `This ${machine} has less than ${gbWords(need)} free for temporary files, so uploads are paused. Photos and videos are kept in OneDrive; ${fix} (Settings, Storage).`;
+}
 
 /** "1 GB", "1.5 GB". */
 const gbWords = (bytes: number) => {
@@ -97,20 +110,20 @@ const gbWords = (bytes: number) => {
 };
 
 /**
- * Refuse an upload while this Mac has too little room for its temporary files: throws HttpError 507 'disk_full'.
+ * Refuse an upload while the server has too little room for its temporary files: throws HttpError 507 'disk_full'.
  * A photo is handled in memory and needs TEMP_MIN_FREE_GB free; a video is on disk while it is read and its preview
  * and clean copy are made, so it needs about 2.3 times its size (`bytes`, from Content-Length, or the route's
  * largest) on top. `who` picks the message. Call it before any of the body is read where the route allows it.
  */
 export async function assertRoomForUploads(
-  cfg: Pick<Config, 'dataDir' | 'uploadMinFreeBytes'>,
+  cfg: Pick<Config, 'dataDir' | 'uploadMinFreeBytes' | 'machine'>,
   who: 'student' | 'organiser',
   opts: { video?: boolean; bytes?: number } = {},
 ): Promise<void> {
   const { free } = await diskSpace(cfg);
   const need = opts.video ? Math.max(0, opts.bytes ?? 0) * 2.3 + cfg.uploadMinFreeBytes : cfg.uploadMinFreeBytes;
   if (free < need) {
-    const msg = who === 'student' ? DISK_FULL_STUDENT : DISK_FULL_ORGANISER.replace('{X}', gbWords(need));
+    const msg = who === 'student' ? DISK_FULL_STUDENT : diskFullOrganiser(cfg.machine, need);
     throw bad(507, 'disk_full', msg);
   }
 }
@@ -156,12 +169,22 @@ async function oneDriveCopiesSize(ctx: Ctx): Promise<number | null> {
   return n;
 }
 
-/** Settings > Storage: this Mac (database, backups, temp files) and OneDrive (originals and the app's copies). */
+/** "stmarys-event-scanner.supercxo.ai" from PUBLIC_URL; empty when it is not a URL. */
+const hostOf = (url: string) => {
+  try {
+    return new URL(url).host;
+  } catch {
+    return '';
+  }
+};
+
+/** Settings > Storage: the server (database, backups, photo cache, temp files) and OneDrive (originals and the app's copies). */
 export async function storageReport(ctx: Ctx): Promise<StorageReport> {
   const { cfg } = ctx;
-  const [disk, temp, legacyMedia, legacyFull, legacyPeople, backups, database, status, copiesBytes, counts, local] = await Promise.all([
+  const [disk, temp, cache, legacyMedia, legacyFull, legacyPeople, backups, database, status, copiesBytes, counts, local] = await Promise.all([
     diskSpace(cfg),
     folderSize(path.join(cfg.dataDir, 'tmp')),
+    folderSize(path.join(cfg.dataDir, 'cache')),
     folderSize(path.join(cfg.dataDir, 'media')),
     folderSize(path.join(cfg.dataDir, 'full')),
     folderSize(path.join(cfg.dataDir, 'people')),
@@ -182,10 +205,13 @@ export async function storageReport(ctx: Ctx): Promise<StorageReport> {
   // A disk that could not be measured is sent as 0 (JSON has no Infinity).
   const finite = (n: number) => (Number.isFinite(n) ? n : 0);
   return {
+    machine: cfg.machine,
+    host: hostOf(cfg.publicUrl),
     disk: { path: disk.path, free: finite(disk.free), total: finite(disk.total) },
-    server: { temp, legacy_copies: legacyMedia + legacyFull + legacyPeople, backups, database },
+    server: { temp, legacy_copies: legacyMedia + legacyFull + legacyPeople, backups, database, cache },
     onedrive: { connected: !!status?.connected, quota: status?.quota ?? null, copies: copiesBytes },
     copies: { waiting: counts.waiting, lost: counts.lost, running: rebuildRunning(ctx), last_error: counts.last_error, local_done: local },
+    cache_max: cfg.viewCacheBytes,
     min_free_upload: cfg.uploadMinFreeBytes,
     warn_below: cfg.alerts.diskWarnBytes,
     critical_below: cfg.alerts.diskCriticalBytes,

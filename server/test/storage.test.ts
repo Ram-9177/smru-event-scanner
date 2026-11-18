@@ -52,9 +52,30 @@ describe('GET /api/admin/storage', () => {
     expect(r.onedrive).toMatchObject({ connected: true, quota: null });
     expect(r.copies).toEqual({ waiting: 0, lost: 0, running: false, last_error: null, local_done: false });
     expect(r).toMatchObject({ min_free_upload: 1 * GB, warn_below: 5 * GB, critical_below: 2 * GB, backups_on: true });
+    expect(r.machine).toBe('Mac'); // what the console calls this computer (a server on anything but macOS)
+    expect(r.host).toBe('photos.college.test'); // PUBLIC_URL's host: which server
+    expect(r.server.cache).toBe(0);
+    expect(r.cache_max).toBe(0); // the photo cache is off in these tests
     fs.rmSync(path.join(h.ctx.cfg.dataDir, 'media'), { recursive: true });
     fs.rmSync(path.join(h.ctx.cfg.dataDir, 'full'), { recursive: true });
     fs.rmSync(path.join(h.ctx.cfg.dataDir, 'tmp', 'upload-1'));
+  });
+
+  it('counts the photo cache and says its limit, and names the computer a server when it is not a Mac', async () => {
+    put('cache/AbC123.t.webp', 4000);
+    put('cache/AbC123.w.webp', 6000);
+    h.ctx.cfg.viewCacheBytes = 300 * 1024 ** 2;
+    h.ctx.cfg.machine = 'server';
+    try {
+      const r = (await h.admin.get('/api/admin/storage').expect(200)).body;
+      expect(r.machine).toBe('server');
+      expect(r.server.cache).toBe(10_000);
+      expect(r.cache_max).toBe(300 * 1024 ** 2);
+    } finally {
+      h.ctx.cfg.viewCacheBytes = 0;
+      h.ctx.cfg.machine = 'Mac';
+      fs.rmSync(path.join(h.ctx.cfg.dataDir, 'cache'), { recursive: true, force: true });
+    }
   });
 
   it('says when backups are off', async () => {
@@ -96,6 +117,24 @@ describe('organiser uploads when the disk is nearly full', () => {
     }
     expect(await mediaRows()).toBe(0);
     expect(fs.readdirSync(path.join(h.driveDir, event.folder.name))).toEqual([]);
+  });
+
+  it('on a server, tell the organiser to give it a bigger disk; students get the same short message as before', async () => {
+    h.ctx.cfg.machine = 'server';
+    try {
+      free = 0.8 * GB;
+      const photo = await makePhoto(24, [{ person: PERSON.red }]);
+      expect((await send(h.admin, photo).expect(507)).body.message).toBe(
+        'This server has less than 1 GB free for temporary files, so uploads are paused. Photos and videos are kept in OneDrive; give the server a bigger disk, or free some space on it (Settings, Storage).',
+      );
+      await expect(assertRoomForUploads(h.ctx.cfg, 'student')).rejects.toMatchObject({
+        status: 507,
+        message: 'The server is nearly full, so photos cannot be added right now. Try again later.',
+      });
+    } finally {
+      h.ctx.cfg.machine = 'Mac';
+    }
+    expect(await mediaRows()).toBe(0);
   });
 
   it('say the limit that is set (TEMP_MIN_FREE_GB)', async () => {

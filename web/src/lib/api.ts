@@ -204,11 +204,17 @@ export interface AlertSettings {
 
 /**
  * Settings > Storage (GET /api/admin/storage). Bytes. Photos and videos live in OneDrive (originals and the app's own
- * copies); this Mac keeps the database, backups and temporary files.
+ * copies); the computer the app runs on keeps the database, backups, a small photo cache and temporary files.
  */
 export interface StorageReport {
+  /** What to call the computer the app runs on: 'Mac' on macOS, 'server' anywhere else. */
+  machine: 'Mac' | 'server';
+  /** The address the app is reached at (PUBLIC_URL's host), to say which server. */
+  host: string;
   disk: { path: string; free: number; total: number };
-  server: { temp: number; legacy_copies: number; backups: number; database: number };
+  /** cache: thumbnails and main-view photos kept for speed, at most cache_max (0 = the cache is off). */
+  server: { temp: number; legacy_copies: number; backups: number; database: number; cache: number };
+  cache_max: number;
   onedrive: { connected: boolean; quota: { total: number; used: number; remaining: number } | null; copies: number | null };
   copies: { waiting: number; lost: number; running: boolean; last_error: string | null; local_done: boolean };
   min_free_upload: number;

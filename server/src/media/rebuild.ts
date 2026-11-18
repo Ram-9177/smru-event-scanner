@@ -73,7 +73,7 @@ const HOT_AGE_MS = 60 * 60_000;
 
 class NoRoomError extends Error {
   constructor() {
-    super('This Mac has too little room right now to rebuild a video.');
+    super('The server has too little room right now to rebuild a video.');
     this.name = 'NoRoomError';
   }
 }
@@ -501,7 +501,7 @@ async function finishLocal(ctx: Ctx): Promise<void> {
     }
   }
   if (await removeLegacyFullDir(cfg)) sizes.push('data/full');
-  if (sizes.length) ctx.log(`every photo and video copy is in OneDrive now: ${sizes.join(', ')} removed from this Mac`);
+  if (sizes.length) ctx.log(`every photo and video copy is in OneDrive now: ${sizes.join(', ')} removed from the server`);
   await db.query(
     `insert into app_state (key, value, updated_at) values ('copies_local_done', to_jsonb(now()::text), now()) on conflict (key) do nothing`,
   );

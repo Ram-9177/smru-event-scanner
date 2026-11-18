@@ -62,6 +62,7 @@ export async function makeHarness(overrides: Partial<Config> = {}, opts: { drive
       orgName: 'Test College',
       workers: 3,
       viewCacheBytes: 0, // the local view cache is off unless a test turns it on
+      machine: 'Mac', // the wording the tests expect wherever they run (the app says 'server' on anything but macOS)
       ...overrides,
     },
   );

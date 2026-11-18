@@ -241,6 +241,9 @@ const CHECKS: Check[] = [
       if (!Number.isFinite(free) || free >= diskWarnBytes) return [];
       const stop = gbLimit(ctx.cfg.uploadMinFreeBytes);
       const critical = free < diskCriticalBytes;
+      // Photos and videos are in OneDrive; this disk holds the database, backups, the photo cache and every upload on
+      // its way there. A Mac gets its space back by cleaning up; a server more often needs a bigger disk.
+      const fix = ctx.cfg.machine === 'Mac' ? 'Free up space on the Mac.' : 'Give the server a bigger disk, or free up space on it.';
       return [
         {
           key: 'disk_low',
@@ -249,8 +252,8 @@ const CHECKS: Check[] = [
           title: critical ? `The server is nearly full: ${gbText(free)} GB free` : `Only ${gbText(free)} GB free on the server`,
           detail:
             free < ctx.cfg.uploadMinFreeBytes
-              ? `Uploads are paused until there is at least ${stop} GB free. Free up space on the Mac.`
-              : `Free up space on the Mac. Uploads stop below ${stop} GB.`,
+              ? `Uploads are paused until there is at least ${stop} GB free. ${fix}`
+              : `${fix} Uploads stop below ${stop} GB.`,
           eventId: null,
         },
       ];
