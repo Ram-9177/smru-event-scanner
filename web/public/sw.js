@@ -1,15 +1,15 @@
 /*
   Event photos - service worker.
-  Caches the app shell, and thumbnails this phone has already viewed when the app itself sent them. Thumbnails live in
-  OneDrive: the app answers with a redirect to a short-lived OneDrive link, which comes back to this worker as an
-  opaque response. Those are passed through and not cached (an opaque entry takes about 7 MB of quota in Chrome, and
-  the link behind it runs out); the browser's own cache keeps them for a few minutes.
+  Keeps only the app itself on the phone: the page and the newest scripts, styles and fonts (a few hundred KB), so it
+  opens like an installed app and shows a page when there is no connection. Photos and videos are never kept here:
+  they come from the server or straight from Microsoft OneDrive each time, and the browser's own cache holds one for
+  5 minutes at most. When this version takes over it deletes every other cache, the thumbnails older versions kept
+  (ep-thumbs-*) included, so a phone gets that space back.
   Never caches API answers (another person's results must never come from a cache), the admin console or sign-in.
   Shows the notification Keep me updated sends ("3 new photos of you at ...") and opens My prints on a tap.
 */
-const SHELL = 'ep-shell-v5'; // v5: notifications for Keep me updated
-const THUMBS = 'ep-thumbs-v2'; // v2: thumbnails come from OneDrive (redirects); v1 is deleted on activate
-const MAX_THUMBS = 400;
+const SHELL = 'ep-shell-v6'; // v6: no photos on the phone, and only the newest app files
+const MAX_ASSETS = 30; // scripts, styles and fonts under /assets/: this version's, and a little of the last one's
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(SHELL).then((c) => c.addAll(['/', '/offline.html', '/logo-mark.png'])));
@@ -20,23 +20,22 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches
       .keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== SHELL && k !== THUMBS).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== SHELL).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
 
-async function cacheFirst(cacheName, request, limit) {
-  const cache = await caches.open(cacheName);
+/** An app file (/assets/..., named after its contents): kept on the phone once fetched; older versions' files go. */
+async function appFile(request) {
+  const cache = await caches.open(SHELL);
   const hit = await cache.match(request);
   if (hit) return hit;
   const res = await fetch(request);
   // Only a plain answer from this site is kept: never a redirected (opaque) one, never an error.
   if (res.ok && res.type === 'basic') {
     await cache.put(request, res.clone());
-    if (limit) {
-      const keys = await cache.keys();
-      if (keys.length > limit) await Promise.all(keys.slice(0, keys.length - limit).map((k) => cache.delete(k)));
-    }
+    const files = (await cache.keys()).filter((k) => new URL(k.url).pathname.startsWith('/assets/'));
+    if (files.length > MAX_ASSETS) await Promise.all(files.slice(0, files.length - MAX_ASSETS).map((k) => cache.delete(k)));
   }
   return res;
 }
@@ -58,13 +57,8 @@ self.addEventListener('fetch', (event) => {
     );
     return;
   }
-  if (url.pathname.startsWith('/assets/')) {
-    event.respondWith(cacheFirst(SHELL, request));
-    return;
-  }
-  if (/^\/img\/[^/]+\/t$/.test(url.pathname) && !url.searchParams.has('a')) {
-    event.respondWith(cacheFirst(THUMBS, request, MAX_THUMBS));
-  }
+  if (url.pathname.startsWith('/assets/')) event.respondWith(appFile(request));
+  // Anything else, photos and videos (/img/...) included, goes to the network as the browser sends it.
 });
 
 // ---- Keep me updated: "N new photos of you at <event>" --------------------------------------

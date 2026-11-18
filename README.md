@@ -200,6 +200,11 @@ The server runs the app and keeps the database; every photo and video byte is in
 - **The server** keeps (or reaches, on its own account) the PostgreSQL database (settings, face data), its backups,
   logs and keys, a small photo cache (`IMG_CACHE_MB`, 300 MB), and temporary files that live for one job or one
   download (removed afterwards, swept at start and every hour).
+- **Students' and viewers' phones** keep no photos or videos. A student's upload goes through the server straight
+  into the event's `Crowd uploads` folder in OneDrive (a video sits in the server's temp folder only while it is
+  handled). On the phone the app keeps only its own files (a few hundred KB) so it opens like an installed app;
+  every picture comes from the server or OneDrive each time, and the browser keeps one for 5 minutes at most.
+  Saving a photo is the only thing that puts one on a phone, when the student asks for it.
 - **How the album gets them.** Every image link is still signed by the app and checked (the photo must be visible to
   that student) before anything else; then the phone is sent to a short-lived OneDrive link for the copy. Share and
   save in the viewer, and Save original and Download all, go through the app (their place is taken out here, and

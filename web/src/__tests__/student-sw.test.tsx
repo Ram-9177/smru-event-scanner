@@ -33,8 +33,8 @@ function worker(windows: { url: string; navigate?: boolean }[] = []) {
 }
 
 describe('the service worker', () => {
-  it('is a new version, so phones pick up the notification code', () => {
-    expect(code).toContain("const SHELL = 'ep-shell-v5'");
+  it('is a new version, so phones pick up the change (no photos kept on the phone)', () => {
+    expect(code).toContain("const SHELL = 'ep-shell-v6'");
   });
 
   it('shows "N new photos of you at <event>" from the push', async () => {
@@ -92,10 +92,16 @@ describe('the service worker', () => {
   });
 });
 
-/* Thumbnails live in OneDrive: the app redirects to a short-lived OneDrive link, which the worker sees as an opaque answer. */
+/* A worker with fake caches: what an older version left on the phone, and a network that answers `answer`. */
 function cachingWorker(answer: (url: string) => { ok: boolean; type: string; status?: number }) {
   const handlers: Record<string, (event: any) => void> = {};
-  const stores = new Map<string, Map<string, any>>([['ep-thumbs-v1', new Map([['old', {}]])], ['ep-other', new Map()]]);
+  const stores = new Map<string, Map<string, any>>([
+    ['ep-thumbs-v1', new Map([['old', {}]])],
+    ['ep-thumbs-v2', new Map([[`${ORIGIN}/img/abc/t?e=1&s=x`, {}]])],
+    ['ep-shell-v5', new Map([[`${ORIGIN}/assets/index-old.js`, {}]])],
+    ['ep-shell-v6', new Map([[`${ORIGIN}/`, {}], [`${ORIGIN}/offline.html`, {}]])],
+    ['ep-other', new Map()],
+  ]);
   const store = (name: string) => {
     if (!stores.has(name)) stores.set(name, new Map());
     const m = stores.get(name)!;
@@ -136,28 +142,32 @@ function cachingWorker(answer: (url: string) => { ok: boolean; type: string; sta
   return { get, activate, stores, fetched };
 }
 
-describe('the service worker and thumbnails in OneDrive', () => {
-  it('passes a redirected (opaque) thumbnail through without caching it', async () => {
-    const w = cachingWorker(() => ({ ok: false, type: 'opaqueredirect', status: 0 }));
-    const res = await w.get('/img/abc/t?e=1&s=x');
-    expect(res!.type).toBe('opaqueredirect');
-    expect(w.stores.get('ep-thumbs-v2')?.size ?? 0).toBe(0);
-    await w.get('/img/abc/t?e=1&s=x');
-    expect(w.fetched).toHaveLength(2); // asked again: nothing was kept
-  });
-
-  it('still keeps a thumbnail the app sent itself (a plain 200 from this site)', async () => {
+describe('the service worker keeps no photos on the phone', () => {
+  it('leaves every photo and video to the network, whatever the answer: nothing of them is kept', async () => {
     const w = cachingWorker(() => ({ ok: true, type: 'basic', status: 200 }));
-    await w.get('/img/abc/t?e=1&s=x');
-    await w.get('/img/abc/t?e=1&s=x');
-    expect(w.fetched).toHaveLength(1);
-    expect(w.stores.get('ep-thumbs-v2')?.size).toBe(1);
+    for (const url of ['/img/abc/t?e=1&s=x', '/img/abc/w?e=1&s=x', '/img/abc/v?e=1&s=x', '/img/abc/t?e=1&s=x&pipe=1']) {
+      expect(await w.get(url)).toBeNull(); // not answered by the worker: the browser fetches it as usual
+    }
+    expect(w.fetched).toEqual([]);
+    expect(w.stores.get('ep-shell-v6')!.size).toBe(2); // the page and the offline page only
   });
 
-  it('drops the old thumbnail cache (v1) when it takes over', async () => {
+  it('keeps only the newest app files (scripts, styles, fonts), never the page or the offline page', async () => {
+    const w = cachingWorker(() => ({ ok: true, type: 'basic', status: 200 }));
+    for (let i = 0; i < 35; i++) await w.get(`/assets/chunk-${i}.js`);
+    await w.get('/assets/chunk-34.js'); // kept: from the phone, not fetched again
+    expect(w.fetched).toHaveLength(35);
+    const kept = [...w.stores.get('ep-shell-v6')!.keys()];
+    expect(kept.filter((u) => u.includes('/assets/'))).toHaveLength(30);
+    expect(kept).not.toContain(`${ORIGIN}/assets/chunk-0.js`); // the oldest go first
+    expect(kept).toContain(`${ORIGIN}/assets/chunk-34.js`);
+    expect(kept).toEqual(expect.arrayContaining([`${ORIGIN}/`, `${ORIGIN}/offline.html`]));
+  });
+
+  it('when it takes over, deletes the thumbnails older versions kept and their app files, so the phone gets the space back', async () => {
     const w = cachingWorker(() => ({ ok: true, type: 'basic' }));
     await w.activate();
-    expect(w.stores.has('ep-thumbs-v1')).toBe(false);
-    expect(code).toContain("const THUMBS = 'ep-thumbs-v2'");
+    expect([...w.stores.keys()]).toEqual(['ep-shell-v6']);
+    expect(code).not.toContain("'ep-thumbs"); // no photo cache is made any more (the name is only in a comment)
   });
 });
