@@ -416,3 +416,31 @@ codes from the organiser page after the move. Organisers sign in again once on t
 Health check: `GET /healthz` answers 200 `{"ok":true}` when PostgreSQL and Redis both answer, and 503 naming the one
 that does not (for example `{"ok":false,"failed":["redis"]}`), within about 2 seconds. Docker's health check uses it,
 and so can outside monitoring: it needs no sign-in and shows nothing else.
+
+## Automatic updates from GitHub
+
+Pushing to `main` updates GitHub only. Once this is set up, the live server checks GitHub every 2 minutes and updates
+itself, so a push to `main` is live within a few minutes. Set it up once on the server, in the app folder, as the user
+that owns it (not root):
+
+```bash
+cd /home/ubuntu/smru-event-scanner
+git pull origin main
+bash deploy/install-auto-update.sh
+```
+
+The setup finds how the app is restarted (a pm2 process or a systemd service for this folder); if it cannot tell, it
+asks: `bash deploy/install-auto-update.sh "pm2 restart <name>"` or `"sudo systemctl restart <service>"`. It checks
+that git can fetch from GitHub without a password, installs the systemd timer `event-photos-update.timer`, and runs
+the first update at once.
+
+- **Each update** (`deploy/update.sh`): fetch `main`; keep the build that runs now; move to the new commit; install
+  packages only when they changed; build; restart; wait for `/healthz` to answer `{"ok":true}`.
+- **When something fails** (the install, the build, the restart, or no health answer within 90 seconds), the server goes
+  back to the previous commit and build by itself, restarted if the new one had been started, and does not try that
+  commit again until `main` changes. A failed build never stops the running app.
+- **Changes made by hand on the server** to files kept in git are never overwritten: the update waits, and the log says
+  which files to undo or commit. Settings (`server/.env`) and data are not in git and are never touched.
+- **What happened:** `logs/update.log`. When it last ran: `systemctl list-timers event-photos-update.timer`.
+  Update now instead of waiting: `sudo systemctl start event-photos-update.service`.
+  Stop the automatic updates: `sudo systemctl disable --now event-photos-update.timer`.
