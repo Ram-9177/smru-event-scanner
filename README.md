@@ -284,7 +284,9 @@ NODE_ENV=production npm start      # serves the web app and the API on PORT; the
   uses the OneDrive redirect URI that is already registered; nothing more to set in Entra.
 - Serve it over **HTTPS**: phones only open the camera on HTTPS. Caddy in front of the app is the least work.
   With nginx, pass `X-Forwarded-Proto` so the sign-in cookie is marked HTTPS-only, and set
-  `client_max_body_size 25m;` (nginx stops at 1 MB unless told otherwise, and student uploads go up to 20 MB).
+  `client_max_body_size 2100m;` with `proxy_request_buffering off;` and `proxy_buffering off;` (nginx stops at 1 MB
+  unless told otherwise; organiser videos go up to 2 GB and student videos to 200 MB, and they should stream through
+  rather than be copied to nginx's own disk). The full nginx block is in [DEPLOYING.md](DEPLOYING.md).
 - With Caddy or nginx on the same server, set `HOST=127.0.0.1` so the app's port can only be reached through it.
   The app believes `X-Forwarded-For`/`-Proto` only from a proxy on this computer; for a proxy on another machine set
   `TRUST_PROXY` to its address (for example `TRUST_PROXY=10.0.0.5`).
